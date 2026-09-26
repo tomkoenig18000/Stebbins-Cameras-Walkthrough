@@ -31,7 +31,17 @@ h1{font-size:22px}h2{font-size:30px}
 .hint{font-size:14px;color:var(--mute);margin:0}
 label{display:grid;gap:4px;font-size:14px;font-weight:600}
 input[type=text],input[type=number],input[type=date],input[type=url],input[type=password],select,textarea{font:16px var(--body);padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);width:100%}
-.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+label,.row>*{min-width:0}
+input,select{max-width:100%;min-width:0}
+input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-height:44px;line-height:22px;text-align:left}
+input[type=date]::-webkit-date-and-time-value{text-align:left}
+.tabs{display:flex;gap:4px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:3px}
+.tabs button{flex:1;font:600 14px var(--body);border:0;border-radius:8px;padding:8px;background:none;color:var(--mute);cursor:pointer}
+.tabs button[aria-pressed="true"]{background:var(--surf);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.param{display:grid;grid-template-columns:minmax(0,1fr) 90px;gap:10px;align-items:center;font-size:14px;font-weight:400}
+.param small{display:block;color:var(--mute);font-size:12px}
+.recs{margin:0;padding-left:20px;display:grid;gap:4px;font-size:14px}
 .seg{display:flex;flex-wrap:wrap;gap:6px}
 .seg button,.btn{font:600 14px var(--body);border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:8px;padding:9px 12px;cursor:pointer}
 .seg button[aria-pressed="true"]{background:var(--sage);color:#fff;border-color:var(--sage)}
@@ -64,24 +74,26 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 </style>
 
 <div class="app">
- <div class="top"><h1 id="siteTag">Camera service</h1><span style="display:flex;gap:6px"><button class="pill" id="daysBtn">Past visits</button><button class="pill" id="syncPill">Synced</button></span></div>
+ <div class="top"><h1 id="siteTag">Camera service</h1><span style="display:flex;gap:6px"><button class="pill" id="daysBtn">Home</button><button class="pill" id="syncPill">Synced</button></span></div>
  <nav class="chips" id="chips" aria-label="Steps"></nav>
  <main id="view"></main>
 </div>
 <div class="bar"><div><button id="back">‹ Back</button><button id="next" class="go">Next ›</button></div></div>
 
 <script>
-// Site list from the Cameras tab (2026-09-26). No coordinates or lock codes.
-const SITES=[["Annie's Junction","QR10","R","Delay 2 min (8/26)"],["Annie's Rock Junction","QR7","R","Delay 2 min (8/26)"],["Scout's Chair","QR1","R","Delay 0? check"],["South Point","QR2","R","Check delay"],["Stone Bridge","NG24","R","? · wants a full 1.8 set"],["Upper Cold Canyon","CT2","R","Delay 1 min (6/13)"],["East Homestead (Steve's Cam)","CT4","R","?"],["North Homestead","HP4K3","R","Pause 1 min; video off (9/2)"],["Big Pool","QR3","R","? · check delay"],["Lion Pool","QR6","R","? · trim veg"],["Live Oak","QRL4","R","Video off (9/2)"],["Coyote Canyon Mouth","QR9","R","?"],["Lower Wildhorse","HP4K2","R","?"],["Riverlapse","NRS 14","B","Timelapse+ 30 min?"],["Middle Coyote Canyon Toyon","NRS 04","B","Trail cam, 80 ft, 5 min, 3-shot"],["Middle Coyote Canyon Buckeye","NRS 06","B","2-shot, 5 min delay (9/2)"],["Coolers Bench","NRS 12","B","Delay 1 min (9/2)"],["Test Site 4","CSS2","R","?"],["High Coyote Canyon","CSS3","R","Pause 1 min (6/14)"],["Spencer","CSS4","R","?"],["Ridge","CT3","R","?"],["Sentinel Site","CRR-2-ML","R","? · confirm we service it"]];
+// Site list from the Cameras tab (2026-09-26): name, camera, brand, last settings, usual interval (wk). No coordinates or lock codes.
+const SITES=[["Annie's Junction","QR10","R","Delay 2 min (8/26)",8],["Annie's Rock Junction","QR7","R","Delay 2 min (8/26)",8],["Scout's Chair","QR1","R","Delay 0? check",8],["South Point","QR2","R","Check delay",8],["Stone Bridge","NG24","R","? · wants a full 1.8 set",8],["Upper Cold Canyon","CT2","R","Delay 1 min (6/13)",12],["East Homestead (Steve's Cam)","CT4","R","?",12],["North Homestead","HP4K3","R","Pause 1 min; video off (9/2)",8],["Big Pool","QR3","R","? · check delay",12],["Lion Pool","QR6","R","? · trim veg",12],["Live Oak","QRL4","R","Video off (9/2)",12],["Coyote Canyon Mouth","QR9","R","?",8],["Lower Wildhorse","HP4K2","R","?",12],["Riverlapse","NRS 14","B","Timelapse+ 30 min?",8],["Middle Coyote Canyon Toyon","NRS 04","B","Trail cam, 80 ft, 5 min, 3-shot",8],["Middle Coyote Canyon Buckeye","NRS 06","B","2-shot, 5 min delay (9/2)",8],["Coolers Bench","NRS 12","B","Delay 1 min (9/2)",6],["Test Site 4","CSS2","R","?",8],["High Coyote Canyon","CSS3","R","Pause 1 min (6/14)",10],["Spencer","CSS4","R","?",12],["Ridge","CT3","R","?",12],["Sentinel Site","CRR-2-ML","R","? · confirm we service it",8]];
 const STEPS=[{k:'arrive',t:'Arrive'},{k:'batt',t:'Batteries'},{k:'card',t:'Card'},{k:'set',t:'Settings'},{k:'trim',t:'Trim'},{k:'pos',t:'Reposition'},{k:'arm',t:'Arm & lock'},{k:'notes',t:'Save'}];
+const PDEF={highRate:2000,stopDays:7,targetFill:80,defaultWeeks:8,recDelay:1,delayFactor:35,videoFactor:25,trimFactor:80};
+const PINFO=[['highRate','High trigger rate','pictures a week that counts as too many'],['stopDays','Stopped-early warning','days between the last picture and the visit'],['targetFill','Target card fill','% full the card should be at the next visit'],['defaultWeeks','Default interval','weeks to the next visit when the site has none'],['recDelay','Suggested delay','minutes, when the delay was 0'],['delayFactor','Delay added','% of pictures left after going from no delay to a delay'],['videoFactor','Video turned off','% of card space left after turning video off'],['trimFactor','Vegetation trimmed','% of pictures left after trimming']];
 const V=['1.8','1.7','1.6','1.5','dead'],VC=['c18','c17','c16','c15','c0'];
 const ymd=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 const today=()=>ymd(new Date());
-const blank=()=>({date:today(),site:'',other:'',brand:'R',state:'',unlocked:false,obs:'',out:[0,0,0,0,0],inMode:'',inn:[0,0,0,0,0],pics:'',gb:'',size:'',weeks:'',first:'',last:'',imported:false,newCard:'',delayFrom:'',delayTo:'',video:'',other2:'',clock:false,trimmed:false,trimNote:'',trimPhoto:false,moved:false,photoPlace:false,photoView:false,armed:false,locked:false,extra:''});
-let stash=null,flash='',pushing=false,S,step=0,days=false,dayPick='',queue=[],sent=[],cfg={url:'',key:''},showCfg=false;
+const blank=()=>({date:today(),site:'',other:'',brand:'R',state:'',unlocked:false,obs:'',out:[0,0,0,0,0],inMode:'',inn:[0,0,0,0,0],pics:'',gb:'',size:'',weeks:'',first:'',last:'',imported:false,newCard:'',nextWeeks:'',delayFrom:'',delayTo:'',video:'',other2:'',clock:false,trimmed:false,trimNote:'',trimPhoto:false,moved:false,photoPlace:false,photoView:false,armed:false,locked:false,extra:''});
+let P={...PDEF},homeTab='visits',stash=null,flash='',pushing=false,S,step=0,days=false,dayPick='',queue=[],sent=[],cfg={url:'',key:''},showCfg=false;
 const L=k=>{try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}};
-S=L('cam-visit')||blank();queue=L('cam-queue')||[];sent=L('cam-sent')||[];cfg=L('cam-cfg')||cfg;step=L('cam-step')||0;stash=L('cam-stash');
-const save=()=>{try{localStorage.setItem('cam-visit',JSON.stringify(S));localStorage.setItem('cam-queue',JSON.stringify(queue));localStorage.setItem('cam-sent',JSON.stringify(sent.slice(-300)));localStorage.setItem('cam-cfg',JSON.stringify(cfg));localStorage.setItem('cam-step',step);localStorage.setItem('cam-stash',JSON.stringify(stash))}catch(e){}};
+S=L('cam-visit')||blank();queue=L('cam-queue')||[];sent=L('cam-sent')||[];cfg=L('cam-cfg')||cfg;P={...PDEF,...(L('cam-params')||{})};step=L('cam-step')||0;stash=L('cam-stash');
+const save=()=>{try{localStorage.setItem('cam-visit',JSON.stringify(S));localStorage.setItem('cam-queue',JSON.stringify(queue));localStorage.setItem('cam-sent',JSON.stringify(sent.slice(-300)));localStorage.setItem('cam-cfg',JSON.stringify(cfg));localStorage.setItem('cam-params',JSON.stringify(P));localStorage.setItem('cam-step',step);localStorage.setItem('cam-stash',JSON.stringify(stash))}catch(e){}};
 const nb=()=>S.brand==='B'?6:12;
 const site=()=>S.site==='__other'?S.other.trim():S.site;
 const siteInfo=()=>SITES.find(s=>s[0]===S.site);
@@ -91,10 +103,23 @@ function grp(a,dir){if(!sum(a))return'';const n=a.map((c,i)=>c?`${c} ${V[i]}`:''
  if(n.length===1&&sum(a)===nb())return`all ${n[0].split(' ')[1]} ${dir}`;return n.join(', ')+' '+dir}
 function calcWeeks(){if(!S.first||!S.last)return'';const w=(new Date(S.last+'T12:00')-new Date(S.first+'T12:00'))/6048e5;return w>=0?String(Math.round(w*10)/10):''}
 function daysAgo(d){return d?Math.round((new Date((S.date||today())+'T12:00')-new Date(d+'T12:00'))/864e5):null}
-function suggest(){const g=+S.gb,s=+S.size;if(!g||!s)return'';const r=g/s,z=[32,64,128,256,512],i=z.indexOf(s);
- if(r<.25&&i>0)return`Used ${Math.round(r*100)}% of the card. Go down to ${z[i-1]}.`;
- if(r>.75)return`Used ${Math.round(r*100)}%. Go up${i>=0&&i<4?' to '+z[i+1]:''} and look for the cause.`;
- return`Used ${Math.round(r*100)}%. Keep a ${s}.`}
+const SIZES=[32,64,128,256,512];
+function nextW(){const si=siteInfo();return +S.nextWeeks||(si&&si[4])||P.defaultWeeks}
+function factor(){let f=1;const why=[];if(S.delayFrom!==''&&+S.delayFrom===0&&+S.delayTo>0){f*=P.delayFactor/100;why.push('delay added')}
+ if(S.video==='off'){f*=P.videoFactor/100;why.push('video off')}if(S.trimmed){f*=P.trimFactor/100;why.push('trimmed')}return{f,why}}
+function proj(){const g=+S.gb,w=+S.weeks;if(!(g>0&&w>0))return null;const {f,why}=factor(),n=nextW(),need=g/w*f*n,cap=P.targetFill/100;
+ const rec=SIZES.find(z=>need<=z*cap);return{need,n,why,rec,maxW:Math.floor(SIZES[SIZES.length-1]*cap/(g/w*f))}}
+function projHtml(){const p=proj();if(!p)return'<p class="hint">Enter GB used and both picture dates to get a card size for next time.</p>';
+ const lead=`About ${p.need<10?p.need.toFixed(1):Math.round(p.need)} GB over the next ${p.n} weeks${p.why.length?' ('+p.why.join(', ')+')':''}.`;
+ if(!p.rec)return`<div class="alert">${lead} Even a ${SIZES[SIZES.length-1]} GB card would fill. Come back within ${p.maxW} weeks or cut the trigger rate.</div>`;
+ const low=S.newCard&&+S.newCard<p.rec;return`<div class="${low?'alert':'info'}" style="display:block">${lead}<br><b>Suggested card: ${p.rec} GB</b>${low?` (you put in ${S.newCard})`:''}</div>`}
+function recs(){const r=[],pw=S.pics&&+S.weeks>0?S.pics/S.weeks:0,d=daysAgo(S.last),hasDelay=+S.delayTo>0||(S.delayTo===''&&+S.delayFrom>0);
+ if(pw>P.highRate&&!hasDelay)r.push(`Set a delay of at least ${P.recDelay} min. It's taking about ${Math.round(pw)} pictures a week.`);
+ if(!S.video&&proj()&&!proj().rec)r.push('If video is on, turning it off saves the most card space.');
+ if(pw>P.highRate&&!S.trimmed)r.push('Trim anything moving in the frame.');
+ if(pw&&pw*factor().f>P.highRate&&hasDelay)r.push(`Even with these changes it may take over ${P.highRate} a week. Try a longer delay.`);
+ if(d!=null&&d>P.stopDays&&S.state==='Dead')r.push('It died early. Use a full set of fresh 1.8s.');
+ return r}
 function settingsText(){const p=[];if(S.delayFrom!==''&&S.delayTo!==''&&S.delayFrom!==S.delayTo)p.push(`Delay ${S.delayFrom} → ${S.delayTo} min`);
  if(S.video==='off')p.push('Video turned off');if(S.video==='on')p.push('Video left on');if(S.other2)p.push(S.other2);if(S.brand==='B'&&S.clock)p.push('Clock checked');return p.join('; ')}
 function notesText(){const p=[];if(S.obs)p.push(S.obs);if(S.trimmed)p.push(S.trimNote?`Cleared ${S.trimNote}`:'Trimmed vegetation');if(S.moved)p.push('Repositioned');if(S.extra)p.push(S.extra);return p.join('. ')}
@@ -106,15 +131,15 @@ function line(){const p=[],o=grp(S.out,'out'),n=S.inMode?`all ${S.inMode} in`:gr
 // one Service Log row, columns A–U; grey formula columns (I,J,P,S) left blank for the sheet
 function row(){const inV=S.inMode||(()=>{const i=S.inn.findIndex(Boolean);return sum(S.inn)&&S.inn.filter(Boolean).length===1?V[i]:grp(S.inn,'').trim()})();
  return{date:S.date,site:site(),type:'Service',onArrival:S.state==='Running'?'OK':(S.state||'?'),pics:S.pics,gbUsed:S.gb,cardOut:S.size,span:S.weeks,
-  out18:S.out[0],out17:S.out[1],out16:S.out[2],out15:S.out[3],outDead:S.out[4],battIn:inV,cardIn:S.newCard,settings:settingsText(),notes:notesText(),line:line(),id:S.editId||(Date.now()+'-'+Math.random().toString(36).slice(2,6)),update:!!S.editId,st:JSON.parse(JSON.stringify({...S,editId:undefined}))}}
+  out18:S.out[0],out17:S.out[1],out16:S.out[2],out15:S.out[3],outDead:S.out[4],battIn:inV,cardIn:S.newCard,settings:settingsText(),notes:notesText(),nextWeeks:nextW(),line:line(),id:S.editId||(Date.now()+'-'+Math.random().toString(36).slice(2,6)),update:!!S.editId,st:JSON.parse(JSON.stringify({...S,editId:undefined}))}}
 function missing(){const m=[];if(!site())m.push('site');if(sum(S.out)!==nb())m.push(`batteries out (${sum(S.out)} of ${nb()})`);if(!S.inMode&&sum(S.inn)!==nb())m.push('batteries in');
  if(!S.pics)m.push('picture count');if(!S.last)m.push('last picture date');if(!S.newCard)m.push('card put in');if(S.trimmed&&!S.trimPhoto)m.push('trim photo');
  if(S.moved&&!(S.photoPlace&&S.photoView))m.push('reposition photos');if(!S.armed)m.push('armed');if(!S.locked)m.push('locked');return m}
 function done(k){return{arrive:site()&&S.state,batt:sum(S.out)===nb()&&(S.inMode||sum(S.inn)===nb()),card:S.pics&&S.last&&S.newCard,set:S.delayTo!==''||S.video,trim:S.trimmed&&S.trimPhoto,pos:S.moved&&S.photoPlace&&S.photoView,arm:S.armed&&S.locked,notes:false}[k]}
 
-function cardHints(){const d=daysAgo(S.last),pw=S.pics&&+S.weeks>0?Math.round(S.pics/S.weeks):0;return` ${d!=null?(d>7?`<div class="alert">The last picture is from ${d} days before the visit, so it stopped early. Worth checking settings and vegetation.</div>`:`<div class="ok">Last picture ${d} day${d==1?'':'s'} before the visit. It ran the whole time.</div>`):''}
- ${pw?(pw>2000?`<div class="alert">About ${pw} pictures a week. That's usually settings or vegetation.</div>`:`<p class="hint">About ${pw} pictures a week.</p>`):''}
- ${suggest()?`<p class="hint">${suggest()}</p>`:''}`}
+function cardHints(){const d=daysAgo(S.last),pw=S.pics&&+S.weeks>0?Math.round(S.pics/S.weeks):0;return` ${d!=null?(d>P.stopDays?`<div class="alert">The last picture is from ${d} days before the visit, so it stopped early. Worth checking settings and vegetation.</div>`:`<div class="ok">Last picture ${d} day${d==1?'':'s'} before the visit. It ran the whole time.</div>`):''}
+ ${pw?(pw>P.highRate?`<div class="alert">About ${pw} pictures a week. That's usually settings or vegetation.</div>`:`<p class="hint">About ${pw} pictures a week.</p>`):''}
+ ${projHtml()}`}
 const seg=(f,opts)=>`<div class="seg">${opts.map(([v,l])=>`<button data-seg="${f}" data-v="${esc(v)}" aria-pressed="${S[f]===v}">${l}</button>`).join('')}</div>`;
 const chk=(f,l,cls='')=>`<label class="check ${cls}"><input type="checkbox" data-f="${f}" ${S[f]?'checked':''}><span>${l}</span></label>`;
 const txt=(f,l,type='text',ph='')=>`<label>${l}<input type="${type}" ${type==='number'?'inputmode="decimal"':''} data-f="${f}" value="${esc(S[f])}" placeholder="${ph}"></label>`;
@@ -141,15 +166,17 @@ card:()=>`<h2>Card</h2>
  <div class="row"><label>Card size (GB)<select data-f="size"><option value="">–</option>${[32,64,128,256,512].map(s=>`<option ${S.size==s?'selected':''}>${s}</option>`).join('')}</select></label></div>
  <div class="row">${txt('first','First picture','date')}${txt('last','Last picture','date')}</div>
  <div class="info"><span>Weeks of pictures: <b>${S.weeks||'–'}</b></span>${S.weeks?'':'<span class="hint">Worked out from the first and last picture dates.</span>'}${S.first&&S.last&&!S.weeks?'<span class="hint" style="color:var(--warn)">The last date is before the first.</span>':''}</div>
- <div id="cardHints" style="display:grid;gap:10px">${cardHints()}</div>
- <label>Card put in (GB)<select data-f="newCard"><option value="">–</option>${[32,64,128,256,512].map(s=>`<option ${S.newCard==s?'selected':''}>${s}</option>`).join('')}</select></label>`,
-set:()=>{const si=siteInfo();return`<h2>Settings</h2>${si?`<p class="hint">Last known: ${esc(si[3])}</p>`:''}
+ <div class="row">${txt('nextWeeks','Next visit in (weeks)','number',String((siteInfo()&&siteInfo()[4])||P.defaultWeeks))}<label>Card put in (GB)<select data-f="newCard"><option value="">–</option>${SIZES.map(s=>`<option ${S.newCard==s?'selected':''}>${s}</option>`).join('')}</select></label></div>
+ <div id="cardHints" style="display:grid;gap:10px">${cardHints()}</div>`,
+set:()=>{const si=siteInfo(),rc=recs();return`<h2>Settings</h2>${si?`<p class="hint">Last known: ${esc(si[3])}</p>`:''}
+ ${rc.length?`<div class="info"><b>Suggested</b><ul class="recs">${rc.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`:''}
  <div class="row">${txt('delayFrom','Delay found (min)','number','0')}${txt('delayTo','Delay set (min)','number','1')}</div>
  <div><div class="tag" style="margin-bottom:6px">Video</div>${seg('video',[['was off','Already off'],['off','Turned it off'],['on','Left on for Paul']])}</div>
  ${txt('other2','Other change (optional)','text','burst 5 → 2 shots')}
- ${S.brand==='B'?chk('clock','Date, time, name and mode are right'):''}`},
+ ${S.brand==='B'?chk('clock','Date, time, name and mode are right'):''}
+ <div id="setProj">${projHtml()}</div>`},
 trim:()=>`<h2>Trim</h2><p class="hint">Grass, branches, anything in frame that moves. Wipe the lens too.</p>
- ${chk('trimmed','Trimmed vegetation')}${S.trimmed?txt('trimNote','What you cleared (optional)','text','grass, coyote brush…')+chk('trimPhoto','Took a photo of the trimmed area','photo'):''}`,
+ ${chk('trimmed','Trimmed vegetation')}${S.trimmed?txt('trimNote','What you cleared (optional)','text','grass, coyote brush…')+chk('trimPhoto','Took a photo of the trimmed area','photo')+`<div id="setProj">${projHtml()}</div>`:''}`,
 pos:()=>`<h2>Reposition</h2><p class="hint">Skip this if the camera stayed put.</p>
  ${chk('moved','I moved or re-aimed the camera')}${S.moved?chk('photoPlace','Photo of the camera and where it\'s mounted','photo')+chk('photoView','Test shot from the camera, checked on your phone','photo'):''}`,
 arm:()=>`<h2>Arm & lock</h2>
@@ -163,6 +190,9 @@ notes:()=>{const m=missing();return`<h2>Save</h2>
  <div class="seg"><button class="btn" id="discard">${S.editId?'Cancel edit':'Discard visit'}</button></div>
  <p class="hint" id="syncMsg">Tap ${S.editId?'Save changes':'Save visit'} below. ${cfg.url?'It uploads to the Camera Log when there\'s signal.':'It stays on this phone until the Camera Log is connected (Past visits → Connection).'}</p>`}
 };
+const settingsTab=()=>`<h2>Settings</h2><p class="hint">These tune the app's warnings and suggestions. They're saved on this phone.</p>
+ ${PINFO.map(([k,l,h])=>`<label class="param"><span>${l}<small>${h}</small></span><input type="number" inputmode="decimal" step="any" data-p="${k}" value="${P[k]}"></label>`).join('')}
+ <div class="seg"><button class="btn" id="resetP">Reset to defaults</button></div>${syncBlock()}`;
 const syncBlock=()=>`<div class="log"><div class="tag">Camera Log</div>
  <p class="hint" id="syncMsg">${queue.length?`${queue.length} visit${queue.length>1?'s':''} waiting to upload.`:cfg.url?'Everything is uploaded.':'Not connected yet. Visits stay on this phone.'}</p>
  <div class="seg">${queue.length&&cfg.url?'<button class="btn" id="pushNow">Upload now</button>':''}<button class="btn" id="cfgBtn">Connection</button></div>
@@ -172,10 +202,10 @@ function renderDays(){const all=[...sent.map(r=>({...r,up:1})),...queue.map(r=>(
  const dates=[...new Set(all.map(r=>r.date))].sort().reverse();if(!dayPick||!dates.includes(dayPick))dayPick=dates[0]||today();
  const rows=all.filter(r=>r.date===dayPick);
  document.getElementById('chips').innerHTML='';
- document.getElementById('view').innerHTML=`<div class="card"><h2>Past visits</h2>
+ document.getElementById('view').innerHTML=`<div class="card"><div class="tabs"><button data-tab="visits" aria-pressed="${homeTab==='visits'}">Past visits</button><button data-tab="settings" aria-pressed="${homeTab==='settings'}">Settings</button></div>${homeTab==='settings'?settingsTab():`
  ${dates.length?`<label>Day<select id="dayPick">${dates.map(d=>`<option ${d===dayPick?'selected':''}>${d}</option>`).join('')}</select></label>`:''}
  ${rows.length?rows.map(r=>`<div class="info"><span><b>${esc(r.site)}</b> <span class="hint">${r.up?'uploaded':'waiting to upload'}</span></span><span class="line" style="border:0;padding:4px 0;background:none">${esc(r.line)}</span>${r.st?`<button class="btn" data-open="${esc(r.id)}">Open and edit</button>`:'<span class="hint">Saved before editing was added</span>'}</div>`).join(''):'<p class="hint">No visits saved on this phone yet.</p>'}
- ${rows.length?'<div class="seg"><button class="btn" id="copyDay">Copy this day</button></div>':''}${syncBlock()}</div>`;
+ ${rows.length?'<div class="seg"><button class="btn" id="copyDay">Copy this day</button></div>':''}<p class="hint" id="syncMsg">${queue.length?`${queue.length} waiting to upload.`:cfg.url?'Everything is uploaded.':'Not connected to the Camera Log. Set it up under Settings.'}</p>${queue.length&&cfg.url?'<div class="seg"><button class="btn" id="pushNow">Upload now</button></div>':''}`}</div>`;
  document.getElementById('back').hidden=true;document.getElementById('next').textContent=S.site||S.editId?'Back to current visit':'Start a visit';document.getElementById('daysBtn').textContent='Current visit';const dp=document.getElementById('dayPick');if(dp)dp.onchange=e=>{dayPick=e.target.value;renderDays()}}
 function render(){
  if(days)return renderDays();
@@ -185,7 +215,7 @@ function render(){
  const p=document.getElementById('syncPill');p.textContent=queue.length?`${queue.length} to upload`:(cfg.url?'All uploaded':'Not connected');p.className='pill'+(queue.length||!cfg.url?' q':'');
  const bk=document.getElementById('back'),nx=document.getElementById('next');delete nx.dataset.arm;bk.hidden=false;bk.disabled=step===0;
  nx.textContent=step===STEPS.length-1?(S.editId?'Save changes':'Save visit'):'Next ›';
- document.getElementById('daysBtn').textContent='Past visits';
+ document.getElementById('daysBtn').textContent='Home';
  document.querySelector('.chips [aria-current="true"]')?.scrollIntoView({inline:'center',block:'nearest'});
  const imp=document.getElementById('imp');if(imp)imp.onchange=readCard;
  save()}
@@ -207,6 +237,8 @@ async function push(){if(pushing||!queue.length||!cfg.url||!navigator.onLine)ret
 
 document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
  if(b.dataset.go)return go(+b.dataset.go);
+ if(b.dataset.tab){homeTab=b.dataset.tab;return render()}
+ if(b.id==='resetP'){P={...PDEF};save();return render()}
  if(b.id==='daysBtn'){days=!days;return render()}
  if(b.dataset.open){const r=[...queue,...sent].find(x=>x.id===b.dataset.open);if(r&&r.st){if(!S.editId&&(S.site||S.pics||sum(S.out)))stash={S:JSON.parse(JSON.stringify(S)),step};S={...blank(),...JSON.parse(JSON.stringify(r.st)),editId:r.id};days=false;step=STEPS.length-1;render();window.scrollTo(0,0);return}}
  if(b.id==='closeDays'){days=false;return render()}
@@ -227,15 +259,16 @@ function saveVisit(b){if(!site()){step=0;flash='Choose a site first.';return ren
  S=blank();step=0;if(wasEdit&&stash){S=stash.S;step=stash.step;stash=null}flash=wasEdit?`Changes to ${name} saved.${site()?' Back to '+site()+'.':''}`:`${name} saved. Ready for the next camera.`;render();window.scrollTo(0,0);push()}
 function alertMsg(t){const m=document.getElementById('syncMsg');if(m)m.textContent=t}
 document.addEventListener('input',e=>{const t=e.target;
+ if(t.dataset.p){const v=parseFloat(t.value);if(!isNaN(v)&&v>=0){P[t.dataset.p]=v;save()}return}
  if(t.dataset.c){S[t.dataset.c][+t.dataset.i]=Math.max(0,parseInt(t.value)||0);save();const k=t.dataset.c,el=t.closest('.count').nextElementSibling;if(el){const s=sum(S[k]);el.textContent=`${s} of ${nb()}`;el.className='tot'+(s&&s!==nb()?' bad':'')}return}
  const f=t.dataset.f;if(!f)return;S[f]=t.type==='checkbox'?t.checked:t.value;
  if(f==='site'){const si=siteInfo();if(si)S.brand=si[2]}
  if(f==='first'||f==='last')S.weeks=calcWeeks();
- if(t.type==='checkbox'||t.tagName==='SELECT'||t.type==='date')render();else{save();const ch=document.getElementById('cardHints');if(ch)ch.innerHTML=cardHints();document.getElementById('siteTag').textContent=site()||'Camera service'}});
+ if(t.type==='checkbox'||t.tagName==='SELECT'||t.type==='date')render();else{save();const ch=document.getElementById('cardHints');if(ch)ch.innerHTML=cardHints();const sp=document.getElementById('setProj');if(sp)sp.innerHTML=projHtml();document.getElementById('siteTag').textContent=site()||'Camera service'}});
 document.getElementById('back').onclick=()=>go(step-1);
 document.getElementById('next').onclick=()=>{if(days){days=false;return render()}if(step===STEPS.length-1)return saveVisit(document.getElementById('next'));go(step+1)};
 addEventListener('online',push);setInterval(push,15*60e3);
-const APP_VERSION='v12';
+const APP_VERSION='v13';
 async function checkUpdate(){if(!navigator.onLine||location.hostname.endsWith('claude.ai'))return;try{const r=await fetch('version.json?'+Date.now(),{cache:'no-store'});const j=await r.json();
  if(j.v&&j.v!==APP_VERSION&&!document.getElementById('upd')){const d=document.createElement('button');d.id='upd';d.className='btn primary';d.style.cssText='width:100%';d.textContent='New version ready. Tap to update (your visit is kept)';d.onclick=()=>{save();location.reload()};document.querySelector('.app').prepend(d)}}catch(e){}}
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){checkUpdate();push()}});checkUpdate();
