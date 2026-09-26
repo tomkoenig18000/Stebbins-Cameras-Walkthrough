@@ -21,7 +21,7 @@ h1,h2{font-family:var(--disp);margin:0;line-height:1.05;text-wrap:balance}
 h1{font-size:22px}h2{font-size:30px}
 .tag{font:500 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
 .top{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.pill{font:600 12px var(--body);border-radius:99px;padding:4px 10px;background:var(--sagebg);color:var(--sage);border:0;cursor:pointer}
+.pill{white-space:nowrap;font:600 12px var(--body);border-radius:99px;padding:4px 10px;background:var(--sagebg);color:var(--sage);border:0;cursor:pointer}
 .pill.q{background:var(--warnbg);color:var(--warn)}
 .chips{display:flex;gap:4px;overflow-x:auto;padding-bottom:2px}
 .chips button{flex:0 0 auto;font:600 12px var(--body);border:1px solid var(--line);background:var(--surf);color:var(--mute);border-radius:99px;padding:5px 10px;cursor:pointer}
@@ -67,7 +67,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
  <div class="top"><h1 id="siteTag">Camera service</h1><span style="display:flex;gap:6px"><button class="pill" id="daysBtn">Past visits</button><button class="pill" id="syncPill">Synced</button></span></div>
  <nav class="chips" id="chips" aria-label="Steps"></nav>
  <main id="view"></main>
- <p class="foot">Round 4 prototype. Works offline once installed. Visits wait on this phone until they upload.</p>
+ <p class="foot"> Works offline once installed. Visits wait on this phone until they upload.</p>
 </div>
 <div class="bar"><div><button id="back">‹ Back</button><button id="next" class="go">Next ›</button></div></div>
 
@@ -76,9 +76,10 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 const SITES=[["Annie's Junction","QR10","R","Delay 2 min (8/26)"],["Annie's Rock Junction","QR7","R","Delay 2 min (8/26)"],["Scout's Chair","QR1","R","Delay 0? check"],["South Point","QR2","R","Check delay"],["Stone Bridge","NG24","R","? · wants a full 1.8 set"],["Upper Cold Canyon","CT2","R","Delay 1 min (6/13)"],["East Homestead (Steve's Cam)","CT4","R","?"],["North Homestead","HP4K3","R","Pause 1 min; video off (9/2)"],["Big Pool","QR3","R","? · check delay"],["Lion Pool","QR6","R","? · trim veg"],["Live Oak","QRL4","R","Video off (9/2)"],["Coyote Canyon Mouth","QR9","R","?"],["Lower Wildhorse","HP4K2","R","?"],["Riverlapse","NRS 14","B","Timelapse+ 30 min?"],["Middle Coyote Canyon Toyon","NRS 04","B","Trail cam, 80 ft, 5 min, 3-shot"],["Middle Coyote Canyon Buckeye","NRS 06","B","2-shot, 5 min delay (9/2)"],["Coolers Bench","NRS 12","B","Delay 1 min (9/2)"],["Test Site 4","CSS2","R","?"],["High Coyote Canyon","CSS3","R","Pause 1 min (6/14)"],["Spencer","CSS4","R","?"],["Ridge","CT3","R","?"],["Sentinel Site","CRR-2-ML","R","? · confirm we service it"]];
 const STEPS=[{k:'arrive',t:'Arrive'},{k:'batt',t:'Batteries'},{k:'card',t:'Card'},{k:'set',t:'Settings'},{k:'trim',t:'Trim'},{k:'pos',t:'Reposition'},{k:'arm',t:'Arm & lock'},{k:'notes',t:'Save'}];
 const V=['1.8','1.7','1.6','1.5','dead'],VC=['c18','c17','c16','c15','c0'];
-const today=()=>new Date().toISOString().slice(0,10);
+const ymd=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const today=()=>ymd(new Date());
 const blank=()=>({date:today(),site:'',other:'',brand:'R',state:'',unlocked:false,obs:'',out:[0,0,0,0,0],inMode:'',inn:[0,0,0,0,0],pics:'',gb:'',size:'',weeks:'',first:'',last:'',imported:false,newCard:'',delayFrom:'',delayTo:'',video:'',other2:'',clock:false,trimmed:false,trimNote:'',trimPhoto:false,moved:false,photoPlace:false,photoView:false,armed:false,locked:false,extra:''});
-let S,step=0,days=false,dayPick='',queue=[],sent=[],cfg={url:'',key:''},showCfg=false;
+let flash='',pushing=false,S,step=0,days=false,dayPick='',queue=[],sent=[],cfg={url:'',key:''},showCfg=false;
 const L=k=>{try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}};
 S=L('cam-visit')||blank();queue=L('cam-queue')||[];sent=L('cam-sent')||[];cfg=L('cam-cfg')||cfg;step=L('cam-step')||0;
 const save=()=>{try{localStorage.setItem('cam-visit',JSON.stringify(S));localStorage.setItem('cam-queue',JSON.stringify(queue));localStorage.setItem('cam-sent',JSON.stringify(sent.slice(-300)));localStorage.setItem('cam-cfg',JSON.stringify(cfg));localStorage.setItem('cam-step',step)}catch(e){}};
@@ -89,15 +90,16 @@ const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&g
 const sum=a=>a.reduce((x,y)=>x+(+y||0),0);
 function grp(a,dir){if(!sum(a))return'';const n=a.map((c,i)=>c?`${c} ${V[i]}`:'').filter(Boolean);
  if(n.length===1&&sum(a)===nb())return`all ${n[0].split(' ')[1]} ${dir}`;return n.join(', ')+' '+dir}
+function calcWeeks(){if(!S.first||!S.last)return'';const w=(new Date(S.last+'T12:00')-new Date(S.first+'T12:00'))/6048e5;return w>=0?String(Math.round(w*10)/10):''}
 function daysAgo(d){return d?Math.round((new Date(today()+'T12:00')-new Date(d+'T12:00'))/864e5):null}
 function suggest(){const g=+S.gb,s=+S.size;if(!g||!s)return'';const r=g/s,z=[32,64,128,256,512],i=z.indexOf(s);
  if(r<.25&&i>0)return`Used ${Math.round(r*100)}% of the card. Go down to ${z[i-1]}.`;
  if(r>.75)return`Used ${Math.round(r*100)}%. Go up${i>=0&&i<4?' to '+z[i+1]:''} and look for the cause.`;
  return`Used ${Math.round(r*100)}%. Keep a ${s}.`}
 function settingsText(){const p=[];if(S.delayFrom!==''&&S.delayTo!==''&&S.delayFrom!==S.delayTo)p.push(`Delay ${S.delayFrom} → ${S.delayTo} min`);
- if(S.video==='off')p.push('Video turned off');if(S.other2)p.push(S.other2);if(S.brand==='B'&&S.clock)p.push('Clock checked');return p.join('; ')}
+ if(S.video==='off')p.push('Video turned off');if(S.video==='on')p.push('Video left on');if(S.other2)p.push(S.other2);if(S.brand==='B'&&S.clock)p.push('Clock checked');return p.join('; ')}
 function notesText(){const p=[];if(S.obs)p.push(S.obs);if(S.trimmed)p.push(S.trimNote?`Cleared ${S.trimNote}`:'Trimmed vegetation');if(S.moved)p.push('Repositioned');if(S.extra)p.push(S.extra);return p.join('. ')}
-function line(){const p=[],o=grp(S.out,'out'),n=grp(S.inn,'in');if(o)p.push(o);if(n)p.push(n);
+function line(){const p=[],o=grp(S.out,'out'),n=S.inMode?`all ${S.inMode} in`:grp(S.inn,'in');if(o)p.push(o);if(n)p.push(n);
  if(S.pics||S.gb){let c=`${S.pics||'?'} for ${S.gb||'?'} gb on ${S.size||'?'}`;if(S.weeks)c+=` in ${S.weeks} weeks`;if(S.state==='Card full'||S.state==='Dead')c+=` (${S.state.toLowerCase()})`;p.push(c)}
  else if(S.state==='Card full'||S.state==='Dead')p.push(S.state.toLowerCase()+' on arrival');
  if(S.newCard)p.push(`put in ${S.newCard}`);const st=settingsText();if(st)p.push(st.toLowerCase());const nt=notesText();if(nt)p.push(nt.toLowerCase());
@@ -109,8 +111,11 @@ function row(){const inV=S.inMode||(()=>{const i=S.inn.findIndex(Boolean);return
 function missing(){const m=[];if(!site())m.push('site');if(sum(S.out)!==nb())m.push(`batteries out (${sum(S.out)} of ${nb()})`);if(!S.inMode&&sum(S.inn)!==nb())m.push('batteries in');
  if(!S.pics)m.push('picture count');if(!S.last)m.push('last picture date');if(!S.newCard)m.push('card put in');if(S.trimmed&&!S.trimPhoto)m.push('trim photo');
  if(S.moved&&!(S.photoPlace&&S.photoView))m.push('reposition photos');if(!S.armed)m.push('armed');if(!S.locked)m.push('locked');return m}
-function done(k){return{arrive:site()&&S.unlocked,batt:sum(S.out)===nb()&&(S.inMode||sum(S.inn)===nb()),card:S.pics&&S.last&&S.newCard,set:S.delayTo!==''||S.video,trim:S.trimmed&&S.trimPhoto,pos:S.moved&&S.photoPlace&&S.photoView,arm:S.armed&&S.locked,notes:false}[k]}
+function done(k){return{arrive:site()&&S.state,batt:sum(S.out)===nb()&&(S.inMode||sum(S.inn)===nb()),card:S.pics&&S.last&&S.newCard,set:S.delayTo!==''||S.video,trim:S.trimmed&&S.trimPhoto,pos:S.moved&&S.photoPlace&&S.photoView,arm:S.armed&&S.locked,notes:false}[k]}
 
+function cardHints(){const d=daysAgo(S.last),pw=S.pics&&+S.weeks>0?Math.round(S.pics/S.weeks):0;return` ${d!=null?(d>7?`<div class="alert">The last picture is from ${d} days ago, so it stopped early. Worth checking settings and vegetation.</div>`:`<div class="ok">Last picture ${d} day${d==1?'':'s'} ago. It ran the whole time.</div>`):''}
+ ${pw?(pw>2000?`<div class="alert">About ${pw} pictures a week. That's usually settings or vegetation.</div>`:`<p class="hint">About ${pw} pictures a week.</p>`):''}
+ ${suggest()?`<p class="hint">${suggest()}</p>`:''}`}
 const seg=(f,opts)=>`<div class="seg">${opts.map(([v,l])=>`<button data-seg="${f}" data-v="${esc(v)}" aria-pressed="${S[f]===v}">${l}</button>`).join('')}</div>`;
 const chk=(f,l,cls='')=>`<label class="check ${cls}"><input type="checkbox" data-f="${f}" ${S[f]?'checked':''}><span>${l}</span></label>`;
 const txt=(f,l,type='text',ph='')=>`<label>${l}<input type="${type}" ${type==='number'?'inputmode="decimal"':''} data-f="${f}" value="${esc(S[f])}" placeholder="${ph}"></label>`;
@@ -123,7 +128,6 @@ arrive:()=>{const si=siteInfo();return`<h2>Arrive</h2><p class="hint">Take a loo
  ${S.site==='__other'?txt('other','Site name','text','Spell it the way the log does')+seg('brand',[['R','Reconyx · 12'],['B','Browning · 6']]):''}
  ${si?`<div class="info"><span><b>${esc(si[1])}</b> · ${si[2]==='B'?'Browning · 6 batteries':'Reconyx · 12 batteries'}</span><span class="hint">Last known settings: ${esc(si[3])}</span></div>`:''}
  ${txt('date','Date','date')}
- ${chk('unlocked','Unlocked and open')}
  <div><div class="tag" style="margin-bottom:6px">What was it doing?</div>${seg('state',[['Running','Running'],['Card full','Card full'],['Dead','Dead'],['Stopped early?','Something odd']])}</div>
  ${txt('obs','Anything odd (optional)','text','screen off, no card, knocked over…')}`},
 batt:()=>`<h2>Batteries</h2><p class="hint">Count the ones coming out by voltage. Truncate, so 1.79 counts as 1.7.</p>
@@ -131,16 +135,15 @@ batt:()=>`<h2>Batteries</h2><p class="hint">Count the ones coming out by voltage
  <div><div class="tag" style="margin-bottom:6px">Going in</div>${seg('inMode',[['1.8','All 1.8'],['1.7','All 1.7'],['','Mixed']])}
  ${S.inMode?'':`<div style="margin-top:8px">${counter('inn')}${tot('inn')}</div>`}</div>
  <p class="hint">${S.brand==='B'?'Brownings won\'t turn on with even one dead battery.':'Lithium only. NG24 wants a full 1.8 set.'}</p>`,
-card:()=>{const d=daysAgo(S.last),pw=S.pics&&S.weeks?Math.round(S.pics/S.weeks):0;return`<h2>Card</h2>
+card:()=>`<h2>Card</h2>
  <label class="drop" for="imp"><b>Read the card</b><span class="hint">Plug in the SD adapter, tap here, open the card's DCIM folder and select all. Only file names, sizes and dates are read; nothing is copied.</span><input type="file" id="imp" multiple></label>
  ${S.imported?'<div class="ok">Filled in from the card. Check the numbers look right.</div>':''}
  <div class="row">${txt('pics','Pictures','number')}${txt('gb','GB used','number')}</div>
- <div class="row"><label>Card size<select data-f="size"><option value="">–</option>${[32,64,128,256,512].map(s=>`<option ${S.size==s?'selected':''}>${s}</option>`).join('')}</select></label>${txt('weeks','Weeks of pictures','number')}</div>
+ <div class="row"><label>Card size (GB)<select data-f="size"><option value="">–</option>${[32,64,128,256,512].map(s=>`<option ${S.size==s?'selected':''}>${s}</option>`).join('')}</select></label></div>
  <div class="row">${txt('first','First picture','date')}${txt('last','Last picture','date')}</div>
- ${d!=null?(d>7?`<div class="alert">The last picture is from ${d} days ago, so it stopped early. Worth checking settings and vegetation.</div>`:`<div class="ok">Last picture ${d} day${d==1?'':'s'} ago. It ran the whole time.</div>`):''}
- ${pw?(pw>2000?`<div class="alert">About ${pw} pictures a week. That's usually settings or vegetation.</div>`:`<p class="hint">About ${pw} pictures a week.</p>`):''}
- ${suggest()?`<p class="hint">${suggest()}</p>`:''}
- <label>Card put in<select data-f="newCard"><option value="">–</option>${[32,64,128,256,512].map(s=>`<option ${S.newCard==s?'selected':''}>${s}</option>`).join('')}</select></label>`},
+ <div class="info"><span>Weeks of pictures: <b>${S.weeks||'–'}</b></span>${S.weeks?'':'<span class="hint">Worked out from the first and last picture dates.</span>'}${S.first&&S.last&&!S.weeks?'<span class="hint" style="color:var(--warn)">The last date is before the first.</span>':''}</div>
+ <div id="cardHints" style="display:grid;gap:10px">${cardHints()}</div>
+ <label>Card put in (GB)<select data-f="newCard"><option value="">–</option>${[32,64,128,256,512].map(s=>`<option ${S.newCard==s?'selected':''}>${s}</option>`).join('')}</select></label>`,
 set:()=>{const si=siteInfo();return`<h2>Settings</h2>${si?`<p class="hint">Last known: ${esc(si[3])}</p>`:''}
  <div class="row">${txt('delayFrom','Delay found (min)','number','0')}${txt('delayTo','Delay set (min)','number','1')}</div>
  <div><div class="tag" style="margin-bottom:6px">Video</div>${seg('video',[['was off','Already off'],['off','Turned it off'],['on','Left on for Paul']])}</div>
@@ -157,7 +160,7 @@ notes:()=>{const m=missing();return`<h2>Save</h2>
  ${m.length?`<div class="alert">Not filled in yet: ${m.join(', ')}</div>`:'<div class="ok">Everything recorded.</div>'}
  <div class="line">${esc(line())}</div>
  ${txt('extra','Anything else','text','')}
- <div class="seg"><button class="btn primary" id="saveVisit">${S.editId?'Save changes':'Save visit and start next'}</button></div>${S.editId?'<p class="hint">Editing a saved visit. Saving replaces it, including in the Camera Log.</p>':''}
+ <div class="seg"><button class="btn primary" id="saveVisit">${S.editId?'Save changes':'Save visit and start next'}</button><button class="btn" id="discard">${S.editId?'Cancel edit':'Discard visit'}</button></div>${S.editId?'<p class="hint">Editing a saved visit. Saving replaces it, including in the Camera Log.</p>':''}
  <div class="log"><div class="tag">Waiting to upload (${queue.length})</div>${queue.map(r=>`<div class="line">${esc(r.line)}</div>`).join('')||'<p class="hint">Nothing waiting.</p>'}
  <div class="seg"><button class="btn" id="pushNow">Upload now</button><button class="btn" id="copyAll">Copy as text</button><button class="btn" id="cfgBtn">Log connection</button></div>
  ${showCfg?`<label>Upload address<input type="url" id="cfgUrl" value="${esc(cfg.url)}" placeholder="https://script.google.com/macros/s/…/exec"></label><label>Key<input type="password" id="cfgKey" value="${esc(cfg.key)}"></label><div class="seg"><button class="btn" id="cfgSave">Save connection</button><button class="btn" id="cfgTest">Test connection</button></div>`:''}
@@ -171,58 +174,66 @@ function renderDays(){const all=[...sent.map(r=>({...r,up:1})),...queue.map(r=>(
  document.getElementById('view').innerHTML=`<div class="card"><h2>Past visits</h2>
  ${dates.length?`<label>Day<select id="dayPick">${dates.map(d=>`<option ${d===dayPick?'selected':''}>${d}</option>`).join('')}</select></label>`:''}
  ${rows.length?rows.map(r=>`<div class="info"><span><b>${esc(r.site)}</b> <span class="hint">${r.up?'uploaded':'waiting to upload'}</span></span><span class="line" style="border:0;padding:4px 0;background:none">${esc(r.line)}</span>${r.st?`<button class="btn" data-open="${esc(r.id)}">Open and edit</button>`:'<span class="hint">Saved before editing was added</span>'}</div>`).join(''):'<p class="hint">No visits saved on this phone yet.</p>'}
- <div class="seg"><button class="btn" id="copyDay">Copy this day</button><button class="btn primary" id="closeDays">Close</button></div></div>`;
- document.getElementById('back').disabled=true;const dp=document.getElementById('dayPick');if(dp)dp.onchange=e=>{dayPick=e.target.value;renderDays()}}
+ <div class="seg"><button class="btn" id="copyDay">Copy this day</button></div></div>`;
+ document.getElementById('back').hidden=true;document.getElementById('next').textContent=S.site||S.editId?'Back to current visit':'Start a visit';document.getElementById('daysBtn').textContent='Current visit';const dp=document.getElementById('dayPick');if(dp)dp.onchange=e=>{dayPick=e.target.value;renderDays()}}
 function render(){
  if(days)return renderDays();
  document.getElementById('chips').innerHTML=STEPS.map((s,i)=>`<button data-go="${i}" class="${done(s.k)?'done':''}" aria-current="${i===step}">${s.t}</button>`).join('');
- document.getElementById('view').innerHTML=`<div class="card">${R[STEPS[step].k]()}</div>`;
+ document.getElementById('view').innerHTML=(flash?`<div class="ok" style="margin-bottom:10px">${esc(flash)}</div>`:'')+`<div class="card">${R[STEPS[step].k]()}</div>`;flash='';
  document.getElementById('siteTag').textContent=site()||'Camera service';
- const p=document.getElementById('syncPill');p.textContent=queue.length?`${queue.length} to upload`:'All uploaded';p.className='pill'+(queue.length?' q':'');
- document.getElementById('back').disabled=step===0;
- document.getElementById('next').textContent=step===STEPS.length-1?'Done':'Next ›';
+ const p=document.getElementById('syncPill');p.textContent=queue.length?`${queue.length} to upload`:(cfg.url?'All uploaded':'Not connected');p.className='pill'+(queue.length||!cfg.url?' q':'');
+ const bk=document.getElementById('back'),nx=document.getElementById('next');bk.hidden=false;bk.disabled=step===0;
+ nx.textContent=step===STEPS.length-1?(S.editId?'Save changes':'Save visit'):'Next ›';
+ document.getElementById('daysBtn').textContent='Past visits';
+ document.querySelector('.chips [aria-current="true"]')?.scrollIntoView({inline:'center',block:'nearest'});
  const imp=document.getElementById('imp');if(imp)imp.onchange=readCard;
  save()}
 function go(i){days=false;step=Math.max(0,Math.min(STEPS.length-1,i));render();window.scrollTo(0,0)}
 
 function readCard(e){const f=[...e.target.files].filter(x=>/\.(jpe?g|mp4|avi|mov)$/i.test(x.name));if(!f.length)return;
- const t=f.map(x=>x.lastModified).sort((a,b)=>a-b),iso=ms=>new Date(ms).toISOString().slice(0,10);
+ const t=f.map(x=>x.lastModified).sort((a,b)=>a-b),iso=ms=>ymd(new Date(ms));
  S.pics=String(f.length);S.gb=(sum(f.map(x=>x.size))/1e9).toFixed(1);S.first=iso(t[0]);S.last=iso(t[t.length-1]);
- S.weeks=String(Math.max(0,Math.round((t[t.length-1]-t[0])/6048e5*10)/10));S.imported=true;render()}
+ S.weeks=calcWeeks();S.imported=true;render()}
 
-async function push(){if(!queue.length||!cfg.url||!navigator.onLine)return;
+async function push(){if(pushing||!queue.length||!cfg.url||!navigator.onLine)return;pushing=true;
  const m=document.getElementById('syncMsg');if(m)m.textContent='Uploading…';
  try{const r=await fetch(cfg.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({key:cfg.key,rows:queue})});
-  const j=await r.json();if(!j.ok)throw new Error(j.error||'rejected');
+  const tx=await r.text();let j;try{j=JSON.parse(tx)}catch(e){throw new Error('the log sent back a web page, not a reply. Check the address and that access is set to Anyone')}if(!j.ok)throw new Error(j.error||'rejected');
   const done=new Set(j.saved||queue.map(q=>q.id));sent.push(...queue.filter(q=>done.has(q.id)));queue=queue.filter(q=>!done.has(q.id));render();
   const m2=document.getElementById('syncMsg');if(m2)m2.textContent=`Uploaded to the Camera Log.`}
- catch(err){const m3=document.getElementById('syncMsg');if(m3)m3.textContent=`Couldn't upload (${err.message}). Visits are kept and will try again.`}}
+ catch(err){const m3=document.getElementById('syncMsg');if(m3)m3.textContent=`Couldn't upload (${err.message}). Visits are kept and will try again.`}
+ finally{pushing=false}}
 
 document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
  if(b.dataset.go)return go(+b.dataset.go);
  if(b.id==='daysBtn'){days=!days;return render()}
- if(b.dataset.open){const r=[...queue,...sent].find(x=>x.id===b.dataset.open);if(r&&r.st){S={...blank(),...JSON.parse(JSON.stringify(r.st)),editId:r.id};days=false;step=STEPS.length-1;return render()}}
+ if(b.dataset.open){const r=[...queue,...sent].find(x=>x.id===b.dataset.open);if(r&&r.st){S={...blank(),...JSON.parse(JSON.stringify(r.st)),editId:r.id};days=false;step=STEPS.length-1;render();window.scrollTo(0,0);return}}
  if(b.id==='closeDays'){days=false;return render()}
  if(b.id==='copyDay'){const t=[...sent,...queue].filter(r=>r.date===dayPick).map(r=>r.line).join('\n');navigator.clipboard?.writeText(t).then(()=>b.textContent='Copied',()=>{});return}
  if(b.id==='syncPill'){days=false;step=STEPS.length-1;return render()}
  if(b.dataset.seg){const f=b.dataset.seg;S[f]=(S[f]===b.dataset.v&&f!=='brand'&&f!=='inMode')?'':b.dataset.v;return render()}
  if(b.dataset.d){const a=S[b.dataset.c],i=+b.dataset.i;a[i]=Math.max(0,(+a[i]||0)+ +b.dataset.d);return render()}
- if(b.id==='saveVisit'){if(!site())return alertMsg('Choose a site first.');const nr=row();queue=queue.filter(q=>q.id!==nr.id);sent=sent.filter(q=>q.id!==nr.id);queue.push(nr);const d=S.date;S=blank();S.date=d;step=0;render();push();return}
+ if(b.id==='saveVisit')return saveVisit(b);
+ if(b.id==='discard'){if(!b.dataset.arm){b.dataset.arm=1;b.textContent='Tap again to discard';return}const wasEdit=S.editId;S=blank();step=0;flash=wasEdit?'Edit discarded. The saved visit is unchanged.':'Visit discarded.';return render()}
  if(b.id==='pushNow')return push();
  if(b.id==='copyAll'){const t=queue.map(q=>q.line).join('\n');navigator.clipboard?.writeText(t).then(()=>b.textContent='Copied',()=>{});return}
  if(b.id==='cfgBtn'){showCfg=!showCfg;return render()}
  if(b.id==='cfgTest'){const u=document.getElementById('cfgUrl').value.trim(),k=document.getElementById('cfgKey').value;alertMsg('Testing…');fetch(u+(u.includes('?')?'&':'?')+'key='+encodeURIComponent(k)).then(r=>r.text()).then(t=>{let j;try{j=JSON.parse(t)}catch(e){throw new Error('got a web page instead of the log. Check the address ends in /exec and access is set to Anyone')}alertMsg(j.ok?'Connected to '+j.sheet+'.':'The log answered: '+j.error)}).catch(err=>alertMsg('Test failed: '+err.message));return}
  if(b.id==='cfgSave'){cfg={url:document.getElementById('cfgUrl').value.trim(),key:document.getElementById('cfgKey').value};showCfg=false;render();push()}
 });
+function saveVisit(b){if(!site()){step=0;flash='Choose a site first.';return render()}
+ if(missing().length&&!b.dataset.arm){b.dataset.arm=1;b.textContent='Save anyway?';return}
+ const nr=row(),name=site(),wasEdit=S.editId;queue=queue.filter(q=>q.id!==nr.id);sent=sent.filter(q=>q.id!==nr.id);queue.push(nr);
+ S=blank();step=0;flash=wasEdit?`Changes to ${name} saved.`:`${name} saved. Ready for the next camera.`;render();window.scrollTo(0,0);push()}
 function alertMsg(t){const m=document.getElementById('syncMsg');if(m)m.textContent=t}
 document.addEventListener('input',e=>{const t=e.target;
  if(t.dataset.c){S[t.dataset.c][+t.dataset.i]=Math.max(0,parseInt(t.value)||0);save();const k=t.dataset.c,el=t.closest('.count').nextElementSibling;if(el){const s=sum(S[k]);el.textContent=`${s} of ${nb()}`;el.className='tot'+(s&&s!==nb()?' bad':'')}return}
  const f=t.dataset.f;if(!f)return;S[f]=t.type==='checkbox'?t.checked:t.value;
  if(f==='site'){const si=siteInfo();if(si)S.brand=si[2]}
- if((f==='first'||f==='last')&&S.first&&S.last){const w=(new Date(S.last)-new Date(S.first))/6048e5;S.weeks=w>=0?String(Math.round(w*10)/10):''}
- if(t.type==='checkbox'||t.tagName==='SELECT'||t.type==='date')render();else{save();document.getElementById('siteTag').textContent=site()||'Camera service'}});
+ if(f==='first'||f==='last')S.weeks=calcWeeks();
+ if(t.type==='checkbox'||t.tagName==='SELECT'||t.type==='date')render();else{save();const ch=document.getElementById('cardHints');if(ch)ch.innerHTML=cardHints();document.getElementById('siteTag').textContent=site()||'Camera service'}});
 document.getElementById('back').onclick=()=>go(step-1);
-document.getElementById('next').onclick=()=>go(step+1);
+document.getElementById('next').onclick=()=>{if(days){days=false;return render()}if(step===STEPS.length-1)return saveVisit(document.getElementById('next'));go(step+1)};
 addEventListener('online',push);setInterval(push,15*60e3);
 if('serviceWorker' in navigator&&location.protocol==='https:'&&!location.hostname.endsWith('claude.ai'))navigator.serviceWorker.register('sw.js').catch(()=>{});
 render();push();
