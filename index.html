@@ -14,6 +14,7 @@
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#191b16;--surf:#23261f;--ink:#e8e7dc;--mute:#a3a693;--line:#3a3e33;--sage:#93b087;--sagebg:#27321f;--straw:#d9b95c;--warn:#e7786a;--warnbg:#3b2521}}
 :root[data-theme="dark"]{color-scheme:dark;--bg:#191b16;--surf:#23261f;--ink:#e8e7dc;--mute:#a3a693;--line:#3a3e33;--sage:#93b087;--sagebg:#27321f;--straw:#d9b95c;--warn:#e7786a;--warnbg:#3b2521}
 *{box-sizing:border-box}
+html,body,button,input,select,label{touch-action:manipulation}
 body{background:var(--bg);color:var(--ink);font:16px/1.45 var(--body);margin:0;padding:0 16px}
 .app{max-width:480px;margin:0 auto;padding-block:12px 110px;display:grid;gap:14px}
 h1,h2{font-family:var(--disp);margin:0;line-height:1.05;text-wrap:balance}
@@ -63,10 +64,10 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 </style>
 
 <div class="app">
- <div class="top"><h1 id="siteTag">Camera service</h1><button class="pill" id="syncPill">Synced</button></div>
+ <div class="top"><h1 id="siteTag">Camera service</h1><span style="display:flex;gap:6px"><button class="pill" id="daysBtn">Past visits</button><button class="pill" id="syncPill">Synced</button></span></div>
  <nav class="chips" id="chips" aria-label="Steps"></nav>
  <main id="view"></main>
- <p class="foot">Round 3 prototype. Works offline once installed. Visits wait on this phone until they upload.</p>
+ <p class="foot">Round 4 prototype. Works offline once installed. Visits wait on this phone until they upload.</p>
 </div>
 <div class="bar"><div><button id="back">‹ Back</button><button id="next" class="go">Next ›</button></div></div>
 
@@ -77,10 +78,10 @@ const STEPS=[{k:'arrive',t:'Arrive'},{k:'batt',t:'Batteries'},{k:'card',t:'Card'
 const V=['1.8','1.7','1.6','1.5','dead'],VC=['c18','c17','c16','c15','c0'];
 const today=()=>new Date().toISOString().slice(0,10);
 const blank=()=>({date:today(),site:'',other:'',brand:'R',state:'',unlocked:false,obs:'',out:[0,0,0,0,0],inMode:'',inn:[0,0,0,0,0],pics:'',gb:'',size:'',weeks:'',first:'',last:'',imported:false,newCard:'',delayFrom:'',delayTo:'',video:'',other2:'',clock:false,trimmed:false,trimNote:'',trimPhoto:false,moved:false,photoPlace:false,photoView:false,armed:false,locked:false,extra:''});
-let S,step=0,queue=[],sent=[],cfg={url:'',key:''},showCfg=false;
+let S,step=0,days=false,dayPick='',queue=[],sent=[],cfg={url:'',key:''},showCfg=false;
 const L=k=>{try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}};
 S=L('cam-visit')||blank();queue=L('cam-queue')||[];sent=L('cam-sent')||[];cfg=L('cam-cfg')||cfg;step=L('cam-step')||0;
-const save=()=>{try{localStorage.setItem('cam-visit',JSON.stringify(S));localStorage.setItem('cam-queue',JSON.stringify(queue));localStorage.setItem('cam-sent',JSON.stringify(sent.slice(-40)));localStorage.setItem('cam-cfg',JSON.stringify(cfg));localStorage.setItem('cam-step',step)}catch(e){}};
+const save=()=>{try{localStorage.setItem('cam-visit',JSON.stringify(S));localStorage.setItem('cam-queue',JSON.stringify(queue));localStorage.setItem('cam-sent',JSON.stringify(sent.slice(-300)));localStorage.setItem('cam-cfg',JSON.stringify(cfg));localStorage.setItem('cam-step',step)}catch(e){}};
 const nb=()=>S.brand==='B'?6:12;
 const site=()=>S.site==='__other'?S.other.trim():S.site;
 const siteInfo=()=>SITES.find(s=>s[0]===S.site);
@@ -163,7 +164,17 @@ notes:()=>{const m=missing();return`<h2>Save</h2>
  <p class="hint" id="syncMsg">${cfg.url?'Uploads when you open the app with signal, and every 15 minutes while it\'s open.':'Not connected to the Camera Log yet. Visits stay on this phone.'}</p></div>`}
 };
 
+function renderDays(){const all=[...sent.map(r=>({...r,up:1})),...queue.map(r=>({...r,up:0}))];
+ const dates=[...new Set(all.map(r=>r.date))].sort().reverse();if(!dayPick||!dates.includes(dayPick))dayPick=dates[0]||today();
+ const rows=all.filter(r=>r.date===dayPick);
+ document.getElementById('chips').innerHTML='';
+ document.getElementById('view').innerHTML=`<div class="card"><h2>Past visits</h2>
+ ${dates.length?`<label>Day<select id="dayPick">${dates.map(d=>`<option ${d===dayPick?'selected':''}>${d}</option>`).join('')}</select></label>`:''}
+ ${rows.length?rows.map(r=>`<div class="info"><span><b>${esc(r.site)}</b> <span class="hint">${r.up?'uploaded':'waiting to upload'}</span></span><span class="line" style="border:0;padding:4px 0;background:none">${esc(r.line)}</span></div>`).join(''):'<p class="hint">No visits saved on this phone yet.</p>'}
+ <div class="seg"><button class="btn" id="copyDay">Copy this day</button><button class="btn primary" id="closeDays">Back to visit</button></div></div>`;
+ document.getElementById('back').disabled=true;const dp=document.getElementById('dayPick');if(dp)dp.onchange=e=>{dayPick=e.target.value;renderDays()}}
 function render(){
+ if(days)return renderDays();
  document.getElementById('chips').innerHTML=STEPS.map((s,i)=>`<button data-go="${i}" class="${done(s.k)?'done':''}" aria-current="${i===step}">${s.t}</button>`).join('');
  document.getElementById('view').innerHTML=`<div class="card">${R[STEPS[step].k]()}</div>`;
  document.getElementById('siteTag').textContent=site()||'Camera service';
@@ -172,7 +183,7 @@ function render(){
  document.getElementById('next').textContent=step===STEPS.length-1?'Done':'Next ›';
  const imp=document.getElementById('imp');if(imp)imp.onchange=readCard;
  save()}
-function go(i){step=Math.max(0,Math.min(STEPS.length-1,i));render();window.scrollTo(0,0)}
+function go(i){days=false;step=Math.max(0,Math.min(STEPS.length-1,i));render();window.scrollTo(0,0)}
 
 function readCard(e){const f=[...e.target.files].filter(x=>/\.(jpe?g|mp4|avi|mov)$/i.test(x.name));if(!f.length)return;
  const t=f.map(x=>x.lastModified).sort((a,b)=>a-b),iso=ms=>new Date(ms).toISOString().slice(0,10);
@@ -189,7 +200,10 @@ async function push(){if(!queue.length||!cfg.url||!navigator.onLine)return;
 
 document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
  if(b.dataset.go)return go(+b.dataset.go);
- if(b.id==='syncPill'){step=STEPS.length-1;return render()}
+ if(b.id==='daysBtn'){days=!days;return render()}
+ if(b.id==='closeDays'){days=false;return render()}
+ if(b.id==='copyDay'){const t=[...sent,...queue].filter(r=>r.date===dayPick).map(r=>r.line).join('\n');navigator.clipboard?.writeText(t).then(()=>b.textContent='Copied',()=>{});return}
+ if(b.id==='syncPill'){days=false;step=STEPS.length-1;return render()}
  if(b.dataset.seg){const f=b.dataset.seg;S[f]=(S[f]===b.dataset.v&&f!=='brand'&&f!=='inMode')?'':b.dataset.v;return render()}
  if(b.dataset.d){const a=S[b.dataset.c],i=+b.dataset.i;a[i]=Math.max(0,(+a[i]||0)+ +b.dataset.d);return render()}
  if(b.id==='saveVisit'){if(!site())return alertMsg('Choose a site first.');queue.push(row());const d=S.date;S=blank();S.date=d;step=0;render();push();return}
