@@ -218,6 +218,7 @@ document.addEventListener('input',e=>{const t=e.target;
  if(t.dataset.c){S[t.dataset.c][+t.dataset.i]=Math.max(0,parseInt(t.value)||0);save();const k=t.dataset.c,el=t.closest('.count').nextElementSibling;if(el){const s=sum(S[k]);el.textContent=`${s} of ${nb()}`;el.className='tot'+(s&&s!==nb()?' bad':'')}return}
  const f=t.dataset.f;if(!f)return;S[f]=t.type==='checkbox'?t.checked:t.value;
  if(f==='site'){const si=siteInfo();if(si)S.brand=si[2]}
+ if((f==='first'||f==='last')&&S.first&&S.last){const w=(new Date(S.last)-new Date(S.first))/6048e5;S.weeks=w>=0?String(Math.round(w*10)/10):''}
  if(t.type==='checkbox'||t.tagName==='SELECT'||t.type==='date')render();else{save();document.getElementById('siteTag').textContent=site()||'Camera service'}});
 document.getElementById('back').onclick=()=>go(step-1);
 document.getElementById('next').onclick=()=>go(step+1);
