@@ -30,6 +30,11 @@ function doPost(e) {
   } catch (err) { return out({ok:false, error:String(err)}); }
   finally { lock.releaseLock(); }
 }
+// Health check: open the /exec URL with ?key=... in a browser, or tap Test connection in the app.
+function doGet(e) {
+  const ok = e && e.parameter && e.parameter.key === KEY;
+  return out(ok ? {ok:true, sheet: SpreadsheetApp.getActive().getName()} : {ok:false, error:'wrong key'});
+}
 function lastDataRow(sh) {
   const a = sh.getRange('A1:A' + sh.getMaxRows()).getValues();
   for (let i = a.length - 1; i >= 0; i--) if (a[i][0] !== '') return i + 1;
