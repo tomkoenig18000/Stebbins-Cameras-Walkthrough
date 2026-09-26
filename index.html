@@ -79,10 +79,10 @@ const V=['1.8','1.7','1.6','1.5','dead'],VC=['c18','c17','c16','c15','c0'];
 const ymd=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 const today=()=>ymd(new Date());
 const blank=()=>({date:today(),site:'',other:'',brand:'R',state:'',unlocked:false,obs:'',out:[0,0,0,0,0],inMode:'',inn:[0,0,0,0,0],pics:'',gb:'',size:'',weeks:'',first:'',last:'',imported:false,newCard:'',delayFrom:'',delayTo:'',video:'',other2:'',clock:false,trimmed:false,trimNote:'',trimPhoto:false,moved:false,photoPlace:false,photoView:false,armed:false,locked:false,extra:''});
-let flash='',pushing=false,S,step=0,days=false,dayPick='',queue=[],sent=[],cfg={url:'',key:''},showCfg=false;
+let stash=null,flash='',pushing=false,S,step=0,days=false,dayPick='',queue=[],sent=[],cfg={url:'',key:''},showCfg=false;
 const L=k=>{try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}};
-S=L('cam-visit')||blank();queue=L('cam-queue')||[];sent=L('cam-sent')||[];cfg=L('cam-cfg')||cfg;step=L('cam-step')||0;
-const save=()=>{try{localStorage.setItem('cam-visit',JSON.stringify(S));localStorage.setItem('cam-queue',JSON.stringify(queue));localStorage.setItem('cam-sent',JSON.stringify(sent.slice(-300)));localStorage.setItem('cam-cfg',JSON.stringify(cfg));localStorage.setItem('cam-step',step)}catch(e){}};
+S=L('cam-visit')||blank();queue=L('cam-queue')||[];sent=L('cam-sent')||[];cfg=L('cam-cfg')||cfg;step=L('cam-step')||0;stash=L('cam-stash');
+const save=()=>{try{localStorage.setItem('cam-visit',JSON.stringify(S));localStorage.setItem('cam-queue',JSON.stringify(queue));localStorage.setItem('cam-sent',JSON.stringify(sent.slice(-300)));localStorage.setItem('cam-cfg',JSON.stringify(cfg));localStorage.setItem('cam-step',step);localStorage.setItem('cam-stash',JSON.stringify(stash))}catch(e){}};
 const nb=()=>S.brand==='B'?6:12;
 const site=()=>S.site==='__other'?S.other.trim():S.site;
 const siteInfo=()=>SITES.find(s=>s[0]===S.site);
@@ -91,7 +91,7 @@ const sum=a=>a.reduce((x,y)=>x+(+y||0),0);
 function grp(a,dir){if(!sum(a))return'';const n=a.map((c,i)=>c?`${c} ${V[i]}`:'').filter(Boolean);
  if(n.length===1&&sum(a)===nb())return`all ${n[0].split(' ')[1]} ${dir}`;return n.join(', ')+' '+dir}
 function calcWeeks(){if(!S.first||!S.last)return'';const w=(new Date(S.last+'T12:00')-new Date(S.first+'T12:00'))/6048e5;return w>=0?String(Math.round(w*10)/10):''}
-function daysAgo(d){return d?Math.round((new Date(today()+'T12:00')-new Date(d+'T12:00'))/864e5):null}
+function daysAgo(d){return d?Math.round((new Date((S.date||today())+'T12:00')-new Date(d+'T12:00'))/864e5):null}
 function suggest(){const g=+S.gb,s=+S.size;if(!g||!s)return'';const r=g/s,z=[32,64,128,256,512],i=z.indexOf(s);
  if(r<.25&&i>0)return`Used ${Math.round(r*100)}% of the card. Go down to ${z[i-1]}.`;
  if(r>.75)return`Used ${Math.round(r*100)}%. Go up${i>=0&&i<4?' to '+z[i+1]:''} and look for the cause.`;
@@ -113,7 +113,7 @@ function missing(){const m=[];if(!site())m.push('site');if(sum(S.out)!==nb())m.p
  if(S.moved&&!(S.photoPlace&&S.photoView))m.push('reposition photos');if(!S.armed)m.push('armed');if(!S.locked)m.push('locked');return m}
 function done(k){return{arrive:site()&&S.state,batt:sum(S.out)===nb()&&(S.inMode||sum(S.inn)===nb()),card:S.pics&&S.last&&S.newCard,set:S.delayTo!==''||S.video,trim:S.trimmed&&S.trimPhoto,pos:S.moved&&S.photoPlace&&S.photoView,arm:S.armed&&S.locked,notes:false}[k]}
 
-function cardHints(){const d=daysAgo(S.last),pw=S.pics&&+S.weeks>0?Math.round(S.pics/S.weeks):0;return` ${d!=null?(d>7?`<div class="alert">The last picture is from ${d} days ago, so it stopped early. Worth checking settings and vegetation.</div>`:`<div class="ok">Last picture ${d} day${d==1?'':'s'} ago. It ran the whole time.</div>`):''}
+function cardHints(){const d=daysAgo(S.last),pw=S.pics&&+S.weeks>0?Math.round(S.pics/S.weeks):0;return` ${d!=null?(d>7?`<div class="alert">The last picture is from ${d} days before the visit, so it stopped early. Worth checking settings and vegetation.</div>`:`<div class="ok">Last picture ${d} day${d==1?'':'s'} before the visit. It ran the whole time.</div>`):''}
  ${pw?(pw>2000?`<div class="alert">About ${pw} pictures a week. That's usually settings or vegetation.</div>`:`<p class="hint">About ${pw} pictures a week.</p>`):''}
  ${suggest()?`<p class="hint">${suggest()}</p>`:''}`}
 const seg=(f,opts)=>`<div class="seg">${opts.map(([v,l])=>`<button data-seg="${f}" data-v="${esc(v)}" aria-pressed="${S[f]===v}">${l}</button>`).join('')}</div>`;
@@ -182,7 +182,7 @@ function render(){
  document.getElementById('view').innerHTML=(flash?`<div class="ok" style="margin-bottom:10px">${esc(flash)}</div>`:'')+`<div class="card">${R[STEPS[step].k]()}</div>`;flash='';
  document.getElementById('siteTag').textContent=site()||'Camera service';
  const p=document.getElementById('syncPill');p.textContent=queue.length?`${queue.length} to upload`:(cfg.url?'All uploaded':'Not connected');p.className='pill'+(queue.length||!cfg.url?' q':'');
- const bk=document.getElementById('back'),nx=document.getElementById('next');bk.hidden=false;bk.disabled=step===0;
+ const bk=document.getElementById('back'),nx=document.getElementById('next');delete nx.dataset.arm;bk.hidden=false;bk.disabled=step===0;
  nx.textContent=step===STEPS.length-1?(S.editId?'Save changes':'Save visit'):'Next ›';
  document.getElementById('daysBtn').textContent='Past visits';
  document.querySelector('.chips [aria-current="true"]')?.scrollIntoView({inline:'center',block:'nearest'});
@@ -207,14 +207,14 @@ async function push(){if(pushing||!queue.length||!cfg.url||!navigator.onLine)ret
 document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
  if(b.dataset.go)return go(+b.dataset.go);
  if(b.id==='daysBtn'){days=!days;return render()}
- if(b.dataset.open){const r=[...queue,...sent].find(x=>x.id===b.dataset.open);if(r&&r.st){S={...blank(),...JSON.parse(JSON.stringify(r.st)),editId:r.id};days=false;step=STEPS.length-1;render();window.scrollTo(0,0);return}}
+ if(b.dataset.open){const r=[...queue,...sent].find(x=>x.id===b.dataset.open);if(r&&r.st){if(!S.editId&&(S.site||S.pics||sum(S.out)))stash={S:JSON.parse(JSON.stringify(S)),step};S={...blank(),...JSON.parse(JSON.stringify(r.st)),editId:r.id};days=false;step=STEPS.length-1;render();window.scrollTo(0,0);return}}
  if(b.id==='closeDays'){days=false;return render()}
  if(b.id==='copyDay'){const t=[...sent,...queue].filter(r=>r.date===dayPick).map(r=>r.line).join('\n');navigator.clipboard?.writeText(t).then(()=>b.textContent='Copied',()=>{});return}
  if(b.id==='syncPill'){days=false;step=STEPS.length-1;return render()}
  if(b.dataset.seg){const f=b.dataset.seg;S[f]=(S[f]===b.dataset.v&&f!=='brand'&&f!=='inMode')?'':b.dataset.v;return render()}
  if(b.dataset.d){const a=S[b.dataset.c],i=+b.dataset.i;a[i]=Math.max(0,(+a[i]||0)+ +b.dataset.d);return render()}
  if(b.id==='saveVisit')return saveVisit(b);
- if(b.id==='discard'){if(!b.dataset.arm){b.dataset.arm=1;b.textContent='Tap again to discard';return}const wasEdit=S.editId;S=blank();step=0;flash=wasEdit?'Edit discarded. The saved visit is unchanged.':'Visit discarded.';return render()}
+ if(b.id==='discard'){if(!b.dataset.arm){b.dataset.arm=1;b.textContent='Tap again to discard';return}const wasEdit=S.editId;S=blank();step=0;if(wasEdit&&stash){S=stash.S;step=stash.step;stash=null}flash=wasEdit?'Edit discarded. The saved visit is unchanged.':'Visit discarded.';return render()}
  if(b.id==='pushNow')return push();
  if(b.id==='copyAll'){const t=queue.map(q=>q.line).join('\n');navigator.clipboard?.writeText(t).then(()=>b.textContent='Copied',()=>{});return}
  if(b.id==='cfgBtn'){showCfg=!showCfg;return render()}
@@ -224,7 +224,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)r
 function saveVisit(b){if(!site()){step=0;flash='Choose a site first.';return render()}
  if(missing().length&&!b.dataset.arm){b.dataset.arm=1;b.textContent='Save anyway?';return}
  const nr=row(),name=site(),wasEdit=S.editId;queue=queue.filter(q=>q.id!==nr.id);sent=sent.filter(q=>q.id!==nr.id);queue.push(nr);
- S=blank();step=0;flash=wasEdit?`Changes to ${name} saved.`:`${name} saved. Ready for the next camera.`;render();window.scrollTo(0,0);push()}
+ S=blank();step=0;if(wasEdit&&stash){S=stash.S;step=stash.step;stash=null}flash=wasEdit?`Changes to ${name} saved.${site()?' Back to '+site()+'.':''}`:`${name} saved. Ready for the next camera.`;render();window.scrollTo(0,0);push()}
 function alertMsg(t){const m=document.getElementById('syncMsg');if(m)m.textContent=t}
 document.addEventListener('input',e=>{const t=e.target;
  if(t.dataset.c){S[t.dataset.c][+t.dataset.i]=Math.max(0,parseInt(t.value)||0);save();const k=t.dataset.c,el=t.closest('.count').nextElementSibling;if(el){const s=sum(S[k]);el.textContent=`${s} of ${nb()}`;el.className='tot'+(s&&s!==nb()?' bad':'')}return}
