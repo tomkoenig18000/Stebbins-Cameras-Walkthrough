@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Cameras">
+<meta name="theme-color" content="#262a22">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.png">
+</head><body>
+<title>Camera Service Walkthrough</title>
+<style>
+:root{--bg:#f3f2ec;--surf:#fffefa;--ink:#262a22;--mute:#6b6f60;--line:#d9d8cc;--sage:#4f6b46;--sagebg:#e5ecdf;--straw:#e3c46b;--warn:#b1392b;--warnbg:#f7e3de;
+--disp:"Barlow Condensed","Arial Narrow",sans-serif;--body:"IBM Plex Sans",system-ui,-apple-system,sans-serif;--mono:"IBM Plex Mono",ui-monospace,Menlo,monospace}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#191b16;--surf:#23261f;--ink:#e8e7dc;--mute:#a3a693;--line:#3a3e33;--sage:#93b087;--sagebg:#27321f;--straw:#d9b95c;--warn:#e7786a;--warnbg:#3b2521}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#191b16;--surf:#23261f;--ink:#e8e7dc;--mute:#a3a693;--line:#3a3e33;--sage:#93b087;--sagebg:#27321f;--straw:#d9b95c;--warn:#e7786a;--warnbg:#3b2521}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:16px/1.45 var(--body);margin:0;padding:0 16px}
+.app{max-width:480px;margin:0 auto;padding-block:12px 110px;display:grid;gap:14px}
+h1,h2{font-family:var(--disp);margin:0;line-height:1.05;text-wrap:balance}
+h1{font-size:22px}h2{font-size:30px}
+.tag{font:500 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.pill{font:600 12px var(--body);border-radius:99px;padding:4px 10px;background:var(--sagebg);color:var(--sage);border:0;cursor:pointer}
+.pill.q{background:var(--warnbg);color:var(--warn)}
+.chips{display:flex;gap:4px;overflow-x:auto;padding-bottom:2px}
+.chips button{flex:0 0 auto;font:600 12px var(--body);border:1px solid var(--line);background:var(--surf);color:var(--mute);border-radius:99px;padding:5px 10px;cursor:pointer}
+.chips button.done{background:var(--sagebg);color:var(--sage);border-color:transparent}
+.chips button[aria-current="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.card{background:var(--surf);border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;gap:14px}
+.hint{font-size:14px;color:var(--mute);margin:0}
+label{display:grid;gap:4px;font-size:14px;font-weight:600}
+input[type=text],input[type=number],input[type=date],input[type=url],input[type=password],select,textarea{font:16px var(--body);padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);width:100%}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button,.btn{font:600 14px var(--body);border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:8px;padding:9px 12px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--sage);color:#fff;border-color:var(--sage)}
+.btn.primary{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.check{display:flex;gap:10px;align-items:flex-start;font-weight:400;font-size:15px;padding:10px;border:1px solid var(--line);border-radius:8px;cursor:pointer}
+.check input{width:22px;height:22px;margin:0;accent-color:var(--sage);flex:none}
+.check.photo{border-color:var(--straw)}
+.count{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;text-align:center}
+.count .v{font:700 16px var(--disp);padding:4px 0;border-radius:6px 6px 0 0;color:#1e2119}
+.count .n{font:600 20px var(--mono);border:1px solid var(--line);border-top:0;padding:6px 0;background:var(--bg);font-variant-numeric:tabular-nums}
+.count input{width:100%;text-align:center;font:600 20px var(--mono);border:0;background:transparent;color:var(--ink);padding:0}
+.count .pm{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-top:0;border-radius:0 0 6px 6px;overflow:hidden}
+.count .pm button{font:700 18px var(--body);border:0;background:var(--surf);color:var(--ink);padding:6px 0;cursor:pointer}
+.count .pm button+button{border-left:1px solid var(--line)}
+.c18{background:#8fb07f}.c17{background:#b7c98a}.c16{background:#e3c46b}.c15{background:#e0a072}.c0{background:#c76a5c}
+.tot{font-size:13px;color:var(--mute)}.tot.bad{color:var(--warn);font-weight:600}
+.alert{background:var(--warnbg);color:var(--warn);font-weight:600;padding:10px 12px;border-radius:8px;font-size:14px}
+.ok{background:var(--sagebg);color:var(--sage);font-weight:600;padding:10px 12px;border-radius:8px;font-size:14px}
+.info{border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:14px;display:grid;gap:2px}
+.line{font:500 14px/1.5 var(--mono);background:var(--bg);border:1px dashed var(--line);border-radius:8px;padding:12px;word-break:break-word}
+.drop{border:2px dashed var(--line);border-radius:10px;padding:14px;text-align:center;display:grid;gap:6px;cursor:pointer}
+.drop input{display:none}
+.bar{position:fixed;left:0;right:0;bottom:0;background:var(--surf);border-top:1px solid var(--line);padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px))}
+.bar div{max-width:480px;margin:0 auto;display:flex;gap:10px}
+.bar button{flex:1;font:700 17px var(--disp);letter-spacing:.03em;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+.bar button.go{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.log{display:grid;gap:6px}
+.foot{font-size:12px;color:var(--mute)}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--sage);outline-offset:2px}
+</style>
+
+<div class="app">
+ <div class="top"><h1 id="siteTag">Camera service</h1><button class="pill" id="syncPill">Synced</button></div>
+ <nav class="chips" id="chips" aria-label="Steps"></nav>
+ <main id="view"></main>
+ <p class="foot">Round 3 prototype. Works offline once installed. Visits wait on this phone until they upload.</p>
+</div>
+<div class="bar"><div><button id="back">‹ Back</button><button id="next" class="go">Next ›</button></div></div>
+
+<script>
+// Site list from the Cameras tab (2026-09-26). No coordinates or lock codes.
+const SITES=[["Annie's Junction","QR10","R","Delay 2 min (8/26)"],["Annie's Rock Junction","QR7","R","Delay 2 min (8/26)"],["Scout's Chair","QR1","R","Delay 0? check"],["South Point","QR2","R","Check delay"],["Stone Bridge","NG24","R","? · wants a full 1.8 set"],["Upper Cold Canyon","CT2","R","Delay 1 min (6/13)"],["East Homestead (Steve's Cam)","CT4","R","?"],["North Homestead","HP4K3","R","Pause 1 min; video off (9/2)"],["Big Pool","QR3","R","? · check delay"],["Lion Pool","QR6","R","? · trim veg"],["Live Oak","QRL4","R","Video off (9/2)"],["Coyote Canyon Mouth","QR9","R","?"],["Lower Wildhorse","HP4K2","R","?"],["Riverlapse","NRS 14","B","Timelapse+ 30 min?"],["Middle Coyote Canyon Toyon","NRS 04","B","Trail cam, 80 ft, 5 min, 3-shot"],["Middle Coyote Canyon Buckeye","NRS 06","B","2-shot, 5 min delay (9/2)"],["Coolers Bench","NRS 12","B","Delay 1 min (9/2)"],["Test Site 4","CSS2","R","?"],["High Coyote Canyon","CSS3","R","Pause 1 min (6/14)"],["Spencer","CSS4","R","?"],["Ridge","CT3","R","?"],["Sentinel Site","CRR-2-ML","R","? · confirm we service it"]];
+const STEPS=[{k:'arrive',t:'Arrive'},{k:'batt',t:'Batteries'},{k:'card',t:'Card'},{k:'set',t:'Settings'},{k:'trim',t:'Trim'},{k:'pos',t:'Reposition'},{k:'arm',t:'Arm & lock'},{k:'notes',t:'Save'}];
+const V=['1.8','1.7','1.6','1.5','dead'],VC=['c18','c17','c16','c15','c0'];
+const today=()=>new Date().toISOString().slice(0,10);
+const blank=()=>({date:today(),site:'',other:'',brand:'R',state:'',unlocked:false,obs:'',out:[0,0,0,0,0],inMode:'',inn:[0,0,0,0,0],pics:'',gb:'',size:'',weeks:'',first:'',last:'',imported:false,newCard:'',delayFrom:'',delayTo:'',video:'',other2:'',clock:false,trimmed:false,trimNote:'',trimPhoto:false,moved:false,photoPlace:false,photoView:false,armed:false,locked:false,extra:''});
+let S,step=0,queue=[],sent=[],cfg={url:'',key:''},showCfg=false;
+const L=k=>{try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}};
+S=L('cam-visit')||blank();queue=L('cam-queue')||[];sent=L('cam-sent')||[];cfg=L('cam-cfg')||cfg;step=L('cam-step')||0;
+const save=()=>{try{localStorage.setItem('cam-visit',JSON.stringify(S));localStorage.setItem('cam-queue',JSON.stringify(queue));localStorage.setItem('cam-sent',JSON.stringify(sent.slice(-40)));localStorage.setItem('cam-cfg',JSON.stringify(cfg));localStorage.setItem('cam-step',step)}catch(e){}};
+const nb=()=>S.brand==='B'?6:12;
+const site=()=>S.site==='__other'?S.other.trim():S.site;
+const siteInfo=()=>SITES.find(s=>s[0]===S.site);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const sum=a=>a.reduce((x,y)=>x+(+y||0),0);
+function grp(a,dir){if(!sum(a))return'';const n=a.map((c,i)=>c?`${c} ${V[i]}`:'').filter(Boolean);
+ if(n.length===1&&sum(a)===nb())return`all ${n[0].split(' ')[1]} ${dir}`;return n.join(', ')+' '+dir}
+function daysAgo(d){return d?Math.round((new Date(today()+'T12:00')-new Date(d+'T12:00'))/864e5):null}
+function suggest(){const g=+S.gb,s=+S.size;if(!g||!s)return'';const r=g/s,z=[32,64,128,256,512],i=z.indexOf(s);
+ if(r<.25&&i>0)return`Used ${Math.round(r*100)}% of the card. Go down to ${z[i-1]}.`;
+ if(r>.75)return`Used ${Math.round(r*100)}%. Go up${i>=0&&i<4?' to '+z[i+1]:''} and look for the cause.`;
+ return`Used ${Math.round(r*100)}%. Keep a ${s}.`}
+function settingsText(){const p=[];if(S.delayFrom!==''&&S.delayTo!==''&&S.delayFrom!==S.delayTo)p.push(`Delay ${S.delayFrom} → ${S.delayTo} min`);
+ if(S.video==='off')p.push('Video turned off');if(S.other2)p.push(S.other2);if(S.brand==='B'&&S.clock)p.push('Clock checked');return p.join('; ')}
+function notesText(){const p=[];if(S.obs)p.push(S.obs);if(S.trimmed)p.push(S.trimNote?`Cleared ${S.trimNote}`:'Trimmed vegetation');if(S.moved)p.push('Repositioned');if(S.extra)p.push(S.extra);return p.join('. ')}
+function line(){const p=[],o=grp(S.out,'out'),n=grp(S.inn,'in');if(o)p.push(o);if(n)p.push(n);
+ if(S.pics||S.gb){let c=`${S.pics||'?'} for ${S.gb||'?'} gb on ${S.size||'?'}`;if(S.weeks)c+=` in ${S.weeks} weeks`;if(S.state==='Card full'||S.state==='Dead')c+=` (${S.state.toLowerCase()})`;p.push(c)}
+ else if(S.state==='Card full'||S.state==='Dead')p.push(S.state.toLowerCase()+' on arrival');
+ if(S.newCard)p.push(`put in ${S.newCard}`);const st=settingsText();if(st)p.push(st.toLowerCase());const nt=notesText();if(nt)p.push(nt.toLowerCase());
+ return`${site()||'[site?]'}: `+p.join(', ')}
+// one Service Log row, columns A–U; grey formula columns (I,J,P,S) left blank for the sheet
+function row(){const inV=S.inMode||(()=>{const i=S.inn.findIndex(Boolean);return sum(S.inn)&&S.inn.filter(Boolean).length===1?V[i]:grp(S.inn,'').trim()})();
+ return{date:S.date,site:site(),type:'Service',onArrival:S.state||'?',pics:S.pics,gbUsed:S.gb,cardOut:S.size,span:S.weeks,
+  out18:S.out[0],out17:S.out[1],out16:S.out[2],out15:S.out[3],outDead:S.out[4],battIn:inV,cardIn:S.newCard,settings:settingsText(),notes:notesText(),line:line(),id:Date.now()+'-'+Math.random().toString(36).slice(2,6)}}
+function missing(){const m=[];if(!site())m.push('site');if(sum(S.out)!==nb())m.push(`batteries out (${sum(S.out)} of ${nb()})`);if(!S.inMode&&sum(S.inn)!==nb())m.push('batteries in');
+ if(!S.pics)m.push('picture count');if(!S.last)m.push('last picture date');if(!S.newCard)m.push('card put in');if(S.trimmed&&!S.trimPhoto)m.push('trim photo');
+ if(S.moved&&!(S.photoPlace&&S.photoView))m.push('reposition photos');if(!S.armed)m.push('armed');if(!S.locked)m.push('locked');return m}
+function done(k){return{arrive:site()&&S.unlocked,batt:sum(S.out)===nb()&&(S.inMode||sum(S.inn)===nb()),card:S.pics&&S.last&&S.newCard,set:S.delayTo!==''||S.video,trim:S.trimmed&&S.trimPhoto,pos:S.moved&&S.photoPlace&&S.photoView,arm:S.armed&&S.locked,notes:false}[k]}
+
+const seg=(f,opts)=>`<div class="seg">${opts.map(([v,l])=>`<button data-seg="${f}" data-v="${esc(v)}" aria-pressed="${S[f]===v}">${l}</button>`).join('')}</div>`;
+const chk=(f,l,cls='')=>`<label class="check ${cls}"><input type="checkbox" data-f="${f}" ${S[f]?'checked':''}><span>${l}</span></label>`;
+const txt=(f,l,type='text',ph='')=>`<label>${l}<input type="${type}" ${type==='number'?'inputmode="decimal"':''} data-f="${f}" value="${esc(S[f])}" placeholder="${ph}"></label>`;
+const counter=k=>`<div class="count">${V.map((v,i)=>`<div><div class="v ${VC[i]}">${v}</div><div class="n"><input type="number" inputmode="numeric" min="0" data-c="${k}" data-i="${i}" value="${S[k][i]||0}" aria-label="${v} ${k}"></div><div class="pm"><button data-d="-1" data-c="${k}" data-i="${i}" aria-label="minus">−</button><button data-d="1" data-c="${k}" data-i="${i}" aria-label="plus">+</button></div></div>`).join('')}</div>`;
+const tot=k=>{const t=sum(S[k]);return`<div class="tot ${t&&t!==nb()?'bad':''}">${t} of ${nb()}</div>`};
+
+const R={
+arrive:()=>{const si=siteInfo();return`<h2>Arrive</h2><p class="hint">Take a look before touching anything.</p>
+ <label>Site<select data-f="site"><option value="">Choose a site</option>${SITES.map(s=>`<option ${S.site===s[0]?'selected':''}>${esc(s[0])}</option>`).join('')}<option value="__other" ${S.site==='__other'?'selected':''}>Other / new site…</option></select></label>
+ ${S.site==='__other'?txt('other','Site name','text','Spell it the way the log does')+seg('brand',[['R','Reconyx · 12'],['B','Browning · 6']]):''}
+ ${si?`<div class="info"><span><b>${esc(si[1])}</b> · ${si[2]==='B'?'Browning · 6 batteries':'Reconyx · 12 batteries'}</span><span class="hint">Last known settings: ${esc(si[3])}</span></div>`:''}
+ ${txt('date','Date','date')}
+ ${chk('unlocked','Unlocked and open')}
+ <div><div class="tag" style="margin-bottom:6px">What was it doing?</div>${seg('state',[['Running','Running'],['Card full','Card full'],['Dead','Dead'],['Stopped early?','Something odd']])}</div>
+ ${txt('obs','Anything odd (optional)','text','screen off, no card, knocked over…')}`},
+batt:()=>`<h2>Batteries</h2><p class="hint">Count the ones coming out by voltage. Truncate, so 1.79 counts as 1.7.</p>
+ <div><div class="tag" style="margin-bottom:6px">Coming out</div>${counter('out')}${tot('out')}</div>
+ <div><div class="tag" style="margin-bottom:6px">Going in</div>${seg('inMode',[['1.8','All 1.8'],['1.7','All 1.7'],['','Mixed']])}
+ ${S.inMode?'':`<div style="margin-top:8px">${counter('inn')}${tot('inn')}</div>`}</div>
+ <p class="hint">${S.brand==='B'?'Brownings won\'t turn on with even one dead battery.':'Lithium only. NG24 wants a full 1.8 set.'}</p>`,
+card:()=>{const d=daysAgo(S.last),pw=S.pics&&S.weeks?Math.round(S.pics/S.weeks):0;return`<h2>Card</h2>
+ <label class="drop" for="imp"><b>Read the card</b><span class="hint">Plug in the SD adapter, tap here, open the card's DCIM folder and select all. Only file names, sizes and dates are read; nothing is copied.</span><input type="file" id="imp" multiple></label>
+ ${S.imported?'<div class="ok">Filled in from the card. Check the numbers look right.</div>':''}
+ <div class="row">${txt('pics','Pictures','number')}${txt('gb','GB used','number')}</div>
+ <div class="row"><label>Card size<select data-f="size"><option value="">–</option>${[32,64,128,256,512].map(s=>`<option ${S.size==s?'selected':''}>${s}</option>`).join('')}</select></label>${txt('weeks','Weeks of pictures','number')}</div>
+ <div class="row">${txt('first','First picture','date')}${txt('last','Last picture','date')}</div>
+ ${d!=null?(d>7?`<div class="alert">The last picture is from ${d} days ago, so it stopped early. Worth checking settings and vegetation.</div>`:`<div class="ok">Last picture ${d} day${d==1?'':'s'} ago. It ran the whole time.</div>`):''}
+ ${pw?(pw>2000?`<div class="alert">About ${pw} pictures a week. That's usually settings or vegetation.</div>`:`<p class="hint">About ${pw} pictures a week.</p>`):''}
+ ${suggest()?`<p class="hint">${suggest()}</p>`:''}
+ <label>Card put in<select data-f="newCard"><option value="">–</option>${[32,64,128,256,512].map(s=>`<option ${S.newCard==s?'selected':''}>${s}</option>`).join('')}</select></label>`},
+set:()=>{const si=siteInfo();return`<h2>Settings</h2>${si?`<p class="hint">Last known: ${esc(si[3])}</p>`:''}
+ <div class="row">${txt('delayFrom','Delay found (min)','number','0')}${txt('delayTo','Delay set (min)','number','1')}</div>
+ <div><div class="tag" style="margin-bottom:6px">Video</div>${seg('video',[['was off','Already off'],['off','Turned it off'],['on','Left on for Paul']])}</div>
+ ${txt('other2','Other change (optional)','text','burst 5 → 2 shots')}
+ ${S.brand==='B'?chk('clock','Date, time, name and mode are right'):''}`},
+trim:()=>`<h2>Trim</h2><p class="hint">Grass, branches, anything in frame that moves. Wipe the lens too.</p>
+ ${chk('trimmed','Trimmed vegetation')}${S.trimmed?txt('trimNote','What you cleared (optional)','text','grass, coyote brush…')+chk('trimPhoto','Took a photo of the trimmed area','photo'):''}`,
+pos:()=>`<h2>Reposition</h2><p class="hint">Skip this if the camera stayed put.</p>
+ ${chk('moved','I moved or re-aimed the camera')}${S.moved?chk('photoPlace','Photo of the camera and where it\'s mounted','photo')+chk('photoView','Test shot from the camera, checked on your phone','photo'):''}`,
+arm:()=>`<h2>Arm & lock</h2>
+ ${chk('armed',S.brand==='B'?'Pressed Mode, back on the countdown, waited 30 s':'Pressed OK, saw the green blink and 10 s countdown')}
+ ${chk('locked','Locked, sticker on')}`,
+notes:()=>{const m=missing();return`<h2>Save</h2>
+ ${m.length?`<div class="alert">Not filled in yet: ${m.join(', ')}</div>`:'<div class="ok">Everything recorded.</div>'}
+ <div class="line">${esc(line())}</div>
+ ${txt('extra','Anything else','text','')}
+ <div class="seg"><button class="btn primary" id="saveVisit">Save visit and start next</button></div>
+ <div class="log"><div class="tag">Waiting to upload (${queue.length})</div>${queue.map(r=>`<div class="line">${esc(r.line)}</div>`).join('')||'<p class="hint">Nothing waiting.</p>'}
+ <div class="seg"><button class="btn" id="pushNow">Upload now</button><button class="btn" id="copyAll">Copy as text</button><button class="btn" id="cfgBtn">Log connection</button></div>
+ ${showCfg?`<label>Upload address<input type="url" id="cfgUrl" value="${esc(cfg.url)}" placeholder="https://script.google.com/macros/s/…/exec"></label><label>Key<input type="password" id="cfgKey" value="${esc(cfg.key)}"></label><button class="btn" id="cfgSave">Save connection</button>`:''}
+ <p class="hint" id="syncMsg">${cfg.url?'Uploads when you open the app with signal, and every 15 minutes while it\'s open.':'Not connected to the Camera Log yet. Visits stay on this phone.'}</p></div>`}
+};
+
+function render(){
+ document.getElementById('chips').innerHTML=STEPS.map((s,i)=>`<button data-go="${i}" class="${done(s.k)?'done':''}" aria-current="${i===step}">${s.t}</button>`).join('');
+ document.getElementById('view').innerHTML=`<div class="card">${R[STEPS[step].k]()}</div>`;
+ document.getElementById('siteTag').textContent=site()||'Camera service';
+ const p=document.getElementById('syncPill');p.textContent=queue.length?`${queue.length} to upload`:'All uploaded';p.className='pill'+(queue.length?' q':'');
+ document.getElementById('back').disabled=step===0;
+ document.getElementById('next').textContent=step===STEPS.length-1?'Done':'Next ›';
+ const imp=document.getElementById('imp');if(imp)imp.onchange=readCard;
+ save()}
+function go(i){step=Math.max(0,Math.min(STEPS.length-1,i));render();window.scrollTo(0,0)}
+
+function readCard(e){const f=[...e.target.files].filter(x=>/\.(jpe?g|mp4|avi|mov)$/i.test(x.name));if(!f.length)return;
+ const t=f.map(x=>x.lastModified).sort((a,b)=>a-b),iso=ms=>new Date(ms).toISOString().slice(0,10);
+ S.pics=String(f.length);S.gb=(sum(f.map(x=>x.size))/1e9).toFixed(1);S.first=iso(t[0]);S.last=iso(t[t.length-1]);
+ S.weeks=String(Math.max(0,Math.round((t[t.length-1]-t[0])/6048e5*10)/10));S.imported=true;render()}
+
+async function push(){if(!queue.length||!cfg.url||!navigator.onLine)return;
+ const m=document.getElementById('syncMsg');if(m)m.textContent='Uploading…';
+ try{const r=await fetch(cfg.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({key:cfg.key,rows:queue})});
+  const j=await r.json();if(!j.ok)throw new Error(j.error||'rejected');
+  const done=new Set(j.saved||queue.map(q=>q.id));sent.push(...queue.filter(q=>done.has(q.id)));queue=queue.filter(q=>!done.has(q.id));render();
+  const m2=document.getElementById('syncMsg');if(m2)m2.textContent=`Uploaded to the Camera Log.`}
+ catch(err){const m3=document.getElementById('syncMsg');if(m3)m3.textContent=`Couldn't upload (${err.message}). Visits are kept and will try again.`}}
+
+document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+ if(b.dataset.go)return go(+b.dataset.go);
+ if(b.id==='syncPill'){step=STEPS.length-1;return render()}
+ if(b.dataset.seg){const f=b.dataset.seg;S[f]=(S[f]===b.dataset.v&&f!=='brand'&&f!=='inMode')?'':b.dataset.v;return render()}
+ if(b.dataset.d){const a=S[b.dataset.c],i=+b.dataset.i;a[i]=Math.max(0,(+a[i]||0)+ +b.dataset.d);return render()}
+ if(b.id==='saveVisit'){if(!site())return alertMsg('Choose a site first.');queue.push(row());const d=S.date;S=blank();S.date=d;step=0;render();push();return}
+ if(b.id==='pushNow')return push();
+ if(b.id==='copyAll'){const t=queue.map(q=>q.line).join('\n');navigator.clipboard?.writeText(t).then(()=>b.textContent='Copied',()=>{});return}
+ if(b.id==='cfgBtn'){showCfg=!showCfg;return render()}
+ if(b.id==='cfgSave'){cfg={url:document.getElementById('cfgUrl').value.trim(),key:document.getElementById('cfgKey').value};showCfg=false;render();push()}
+});
+function alertMsg(t){const m=document.getElementById('syncMsg');if(m)m.textContent=t}
+document.addEventListener('input',e=>{const t=e.target;
+ if(t.dataset.c){S[t.dataset.c][+t.dataset.i]=Math.max(0,parseInt(t.value)||0);save();const k=t.dataset.c,el=t.closest('.count').nextElementSibling;if(el){const s=sum(S[k]);el.textContent=`${s} of ${nb()}`;el.className='tot'+(s&&s!==nb()?' bad':'')}return}
+ const f=t.dataset.f;if(!f)return;S[f]=t.type==='checkbox'?t.checked:t.value;
+ if(f==='site'){const si=siteInfo();if(si)S.brand=si[2]}
+ if(t.type==='checkbox'||t.tagName==='SELECT'||t.type==='date')render();else{save();document.getElementById('siteTag').textContent=site()||'Camera service'}});
+document.getElementById('back').onclick=()=>go(step-1);
+document.getElementById('next').onclick=()=>go(step+1);
+addEventListener('online',push);setInterval(push,15*60e3);
+if('serviceWorker' in navigator&&location.protocol==='https:'&&!location.hostname.endsWith('claude.ai'))navigator.serviceWorker.register('sw.js').catch(()=>{});
+render();push();
+</script>
+</body></html>
