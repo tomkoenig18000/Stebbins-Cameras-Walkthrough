@@ -13,4 +13,7 @@ Open the site in Safari, tap Share → Add to Home Screen. Open it once with sig
 Visits wait on the phone until there's signal. The address and key are stored only on each phone, never in this repo.
 
 ## Updating the site list
-Edit `SITES` near the top of the script in `index.html`, and bump `C` in `sw.js` so phones pick up the change.
+Edit `SITES` near the top of the script in `index.html`.
+
+## Publishing a change
+Bump all three together so installed phones show the "New version ready" button: `APP_VERSION` in `index.html`, `version.json`, and `C` in `sw.js`.
