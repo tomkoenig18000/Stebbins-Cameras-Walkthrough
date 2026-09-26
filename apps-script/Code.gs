@@ -15,14 +15,15 @@ function doPost(e) {
     const props = PropertiesService.getScriptProperties();
     const saved = [];
     body.rows.forEach(r => {
-      if (props.getProperty('id_' + r.id)) { saved.push(r.id); return; } // already uploaded
-      const n = lastDataRow(sh) + 1;
+      const prev = props.getProperty('id_' + r.id);
+      if (prev && !r.update) { saved.push(r.id); return; } // already uploaded
+      const n = prev && prev !== '1' ? Number(prev) : lastDataRow(sh) + 1; // edits overwrite their row
       Object.entries(COLS).forEach(([c, k]) => {
         const v = r[k];
-        if (v !== '' && v != null) sh.getRange(c + n).setValue(v);
+        sh.getRange(c + n).setValue(v == null ? '' : v);
       });
       FORMULA_COLS.forEach(c => sh.getRange(c + '2').copyTo(sh.getRange(c + n)));
-      props.setProperty('id_' + r.id, '1');
+      props.setProperty('id_' + r.id, String(n));
       saved.push(r.id);
     });
     return out({ok:true, saved});

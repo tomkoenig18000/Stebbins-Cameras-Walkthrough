@@ -105,7 +105,7 @@ function line(){const p=[],o=grp(S.out,'out'),n=grp(S.inn,'in');if(o)p.push(o);i
 // one Service Log row, columns A–U; grey formula columns (I,J,P,S) left blank for the sheet
 function row(){const inV=S.inMode||(()=>{const i=S.inn.findIndex(Boolean);return sum(S.inn)&&S.inn.filter(Boolean).length===1?V[i]:grp(S.inn,'').trim()})();
  return{date:S.date,site:site(),type:'Service',onArrival:S.state||'?',pics:S.pics,gbUsed:S.gb,cardOut:S.size,span:S.weeks,
-  out18:S.out[0],out17:S.out[1],out16:S.out[2],out15:S.out[3],outDead:S.out[4],battIn:inV,cardIn:S.newCard,settings:settingsText(),notes:notesText(),line:line(),id:Date.now()+'-'+Math.random().toString(36).slice(2,6)}}
+  out18:S.out[0],out17:S.out[1],out16:S.out[2],out15:S.out[3],outDead:S.out[4],battIn:inV,cardIn:S.newCard,settings:settingsText(),notes:notesText(),line:line(),id:S.editId||(Date.now()+'-'+Math.random().toString(36).slice(2,6)),update:!!S.editId,st:JSON.parse(JSON.stringify({...S,editId:undefined}))}}
 function missing(){const m=[];if(!site())m.push('site');if(sum(S.out)!==nb())m.push(`batteries out (${sum(S.out)} of ${nb()})`);if(!S.inMode&&sum(S.inn)!==nb())m.push('batteries in');
  if(!S.pics)m.push('picture count');if(!S.last)m.push('last picture date');if(!S.newCard)m.push('card put in');if(S.trimmed&&!S.trimPhoto)m.push('trim photo');
  if(S.moved&&!(S.photoPlace&&S.photoView))m.push('reposition photos');if(!S.armed)m.push('armed');if(!S.locked)m.push('locked');return m}
@@ -157,7 +157,7 @@ notes:()=>{const m=missing();return`<h2>Save</h2>
  ${m.length?`<div class="alert">Not filled in yet: ${m.join(', ')}</div>`:'<div class="ok">Everything recorded.</div>'}
  <div class="line">${esc(line())}</div>
  ${txt('extra','Anything else','text','')}
- <div class="seg"><button class="btn primary" id="saveVisit">Save visit and start next</button></div>
+ <div class="seg"><button class="btn primary" id="saveVisit">${S.editId?'Save changes':'Save visit and start next'}</button></div>${S.editId?'<p class="hint">Editing a saved visit. Saving replaces it, including in the Camera Log.</p>':''}
  <div class="log"><div class="tag">Waiting to upload (${queue.length})</div>${queue.map(r=>`<div class="line">${esc(r.line)}</div>`).join('')||'<p class="hint">Nothing waiting.</p>'}
  <div class="seg"><button class="btn" id="pushNow">Upload now</button><button class="btn" id="copyAll">Copy as text</button><button class="btn" id="cfgBtn">Log connection</button></div>
  ${showCfg?`<label>Upload address<input type="url" id="cfgUrl" value="${esc(cfg.url)}" placeholder="https://script.google.com/macros/s/…/exec"></label><label>Key<input type="password" id="cfgKey" value="${esc(cfg.key)}"></label><button class="btn" id="cfgSave">Save connection</button>`:''}
@@ -170,8 +170,8 @@ function renderDays(){const all=[...sent.map(r=>({...r,up:1})),...queue.map(r=>(
  document.getElementById('chips').innerHTML='';
  document.getElementById('view').innerHTML=`<div class="card"><h2>Past visits</h2>
  ${dates.length?`<label>Day<select id="dayPick">${dates.map(d=>`<option ${d===dayPick?'selected':''}>${d}</option>`).join('')}</select></label>`:''}
- ${rows.length?rows.map(r=>`<div class="info"><span><b>${esc(r.site)}</b> <span class="hint">${r.up?'uploaded':'waiting to upload'}</span></span><span class="line" style="border:0;padding:4px 0;background:none">${esc(r.line)}</span></div>`).join(''):'<p class="hint">No visits saved on this phone yet.</p>'}
- <div class="seg"><button class="btn" id="copyDay">Copy this day</button><button class="btn primary" id="closeDays">Back to visit</button></div></div>`;
+ ${rows.length?rows.map(r=>`<div class="info"><span><b>${esc(r.site)}</b> <span class="hint">${r.up?'uploaded':'waiting to upload'}</span></span><span class="line" style="border:0;padding:4px 0;background:none">${esc(r.line)}</span>${r.st?`<button class="btn" data-open="${esc(r.id)}">Open and edit</button>`:'<span class="hint">Saved before editing was added</span>'}</div>`).join(''):'<p class="hint">No visits saved on this phone yet.</p>'}
+ <div class="seg"><button class="btn" id="copyDay">Copy this day</button><button class="btn primary" id="closeDays">Close</button></div></div>`;
  document.getElementById('back').disabled=true;const dp=document.getElementById('dayPick');if(dp)dp.onchange=e=>{dayPick=e.target.value;renderDays()}}
 function render(){
  if(days)return renderDays();
@@ -201,12 +201,13 @@ async function push(){if(!queue.length||!cfg.url||!navigator.onLine)return;
 document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
  if(b.dataset.go)return go(+b.dataset.go);
  if(b.id==='daysBtn'){days=!days;return render()}
+ if(b.dataset.open){const r=[...queue,...sent].find(x=>x.id===b.dataset.open);if(r&&r.st){S={...blank(),...JSON.parse(JSON.stringify(r.st)),editId:r.id};days=false;step=STEPS.length-1;return render()}}
  if(b.id==='closeDays'){days=false;return render()}
  if(b.id==='copyDay'){const t=[...sent,...queue].filter(r=>r.date===dayPick).map(r=>r.line).join('\n');navigator.clipboard?.writeText(t).then(()=>b.textContent='Copied',()=>{});return}
  if(b.id==='syncPill'){days=false;step=STEPS.length-1;return render()}
  if(b.dataset.seg){const f=b.dataset.seg;S[f]=(S[f]===b.dataset.v&&f!=='brand'&&f!=='inMode')?'':b.dataset.v;return render()}
  if(b.dataset.d){const a=S[b.dataset.c],i=+b.dataset.i;a[i]=Math.max(0,(+a[i]||0)+ +b.dataset.d);return render()}
- if(b.id==='saveVisit'){if(!site())return alertMsg('Choose a site first.');queue.push(row());const d=S.date;S=blank();S.date=d;step=0;render();push();return}
+ if(b.id==='saveVisit'){if(!site())return alertMsg('Choose a site first.');const nr=row();queue=queue.filter(q=>q.id!==nr.id);sent=sent.filter(q=>q.id!==nr.id);queue.push(nr);const d=S.date;S=blank();S.date=d;step=0;render();push();return}
  if(b.id==='pushNow')return push();
  if(b.id==='copyAll'){const t=queue.map(q=>q.line).join('\n');navigator.clipboard?.writeText(t).then(()=>b.textContent='Copied',()=>{});return}
  if(b.id==='cfgBtn'){showCfg=!showCfg;return render()}
