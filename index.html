@@ -16,9 +16,9 @@
 *{box-sizing:border-box}
 html,body,button,input,select,label{touch-action:manipulation}
 body{background:var(--bg);color:var(--ink);font:16px/1.45 var(--body);margin:0;padding:0 16px}
-.app{max-width:480px;margin:0 auto;padding-block:12px 110px;display:grid;gap:14px}
+.app{max-width:480px;margin:0 auto;padding-block:12px 110px;display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
 h1,h2{font-family:var(--disp);margin:0;line-height:1.05;text-wrap:balance}
-h1{font-size:22px}h2{font-size:30px}
+h1{font-size:22px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}h2{font-size:30px}
 .tag{font:500 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
 .top{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .pill{white-space:nowrap;font:600 12px var(--body);border-radius:99px;padding:4px 10px;background:var(--sagebg);color:var(--sage);border:0;cursor:pointer}
@@ -54,7 +54,7 @@ input[type=date]::-webkit-date-and-time-value{text-align:left}
 .count .n{font:600 20px var(--mono);border:1px solid var(--line);border-top:0;padding:6px 0;background:var(--bg);font-variant-numeric:tabular-nums}
 .count input{width:100%;text-align:center;font:600 20px var(--mono);border:0;background:transparent;color:var(--ink);padding:0}
 .count .pm{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-top:0;border-radius:0 0 6px 6px;overflow:hidden}
-.count .pm button{font:700 18px var(--body);border:0;background:var(--surf);color:var(--ink);padding:6px 0;cursor:pointer}
+.count .pm button{font:700 18px var(--body);border:0;background:var(--surf);color:var(--ink);padding:10px 0;cursor:pointer}
 .count .pm button+button{border-left:1px solid var(--line)}
 .c18{background:#8fb07f}.c17{background:#b7c98a}.c16{background:#e3c46b}.c15{background:#e0a072}.c0{background:#c76a5c}
 .tot{font-size:13px;color:var(--mute)}.tot.bad{color:var(--warn);font-weight:600}
@@ -67,6 +67,7 @@ input[type=date]::-webkit-date-and-time-value{text-align:left}
 .bar{position:fixed;left:0;right:0;bottom:0;background:var(--surf);border-top:1px solid var(--line);padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px))}
 .bar div{max-width:480px;margin:0 auto;display:flex;gap:10px}
 .bar button{flex:1;font:700 17px var(--disp);letter-spacing:.03em;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+.bar button:disabled{opacity:.35;cursor:default}
 .bar button.go{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .log{display:grid;gap:6px}
 .foot{font-size:12px;color:var(--mute)}
@@ -120,7 +121,7 @@ function recs(){const r=[],pw=S.pics&&+S.weeks>0?S.pics/S.weeks:0,d=daysAgo(S.la
  if(pw&&pw*factor().f>P.highRate&&hasDelay)r.push(`Even with these changes it may take over ${P.highRate} a week. Try a longer delay.`);
  if(d!=null&&d>P.stopDays&&S.state==='Dead')r.push('It died early. Use a full set of fresh 1.8s.');
  return r}
-function settingsText(){const p=[];if(S.delayFrom!==''&&S.delayTo!==''&&S.delayFrom!==S.delayTo)p.push(`Delay ${S.delayFrom} → ${S.delayTo} min`);
+function settingsText(){const p=[];if(S.delayTo!==''&&S.delayFrom!==S.delayTo)p.push(`Delay ${S.delayFrom===''?'?':S.delayFrom} → ${S.delayTo} min`);
  if(S.video==='off')p.push('Video turned off');if(S.video==='on')p.push('Video left on');if(S.other2)p.push(S.other2);if(S.brand==='B'&&S.clock)p.push('Clock checked');return p.join('; ')}
 function notesText(){const p=[];if(S.obs)p.push(S.obs);if(S.trimmed)p.push(S.trimNote?`Cleared ${S.trimNote}`:'Trimmed vegetation');if(S.moved)p.push('Repositioned');if(S.extra)p.push(S.extra);return p.join('. ')}
 function line(){const p=[],o=grp(S.out,'out'),n=S.inMode?`all ${S.inMode} in`:grp(S.inn,'in');if(o)p.push(o);if(n)p.push(n);
@@ -129,10 +130,10 @@ function line(){const p=[],o=grp(S.out,'out'),n=S.inMode?`all ${S.inMode} in`:gr
  if(S.newCard)p.push(`put in ${S.newCard}`);const st=settingsText();if(st)p.push(st.toLowerCase());const nt=notesText();if(nt)p.push(nt.toLowerCase());
  return`${site()||'[site?]'}: `+p.join(', ')}
 // one Service Log row, columns A–U; grey formula columns (I,J,P,S) left blank for the sheet
-function row(){const inV=S.inMode||(()=>{const i=S.inn.findIndex(Boolean);return sum(S.inn)&&S.inn.filter(Boolean).length===1?V[i]:grp(S.inn,'').trim()})();
+function row(){const inV=S.inMode||(()=>{const i=S.inn.findIndex(Boolean);return sum(S.inn)===nb()&&S.inn.filter(Boolean).length===1?V[i]:grp(S.inn,'').trim()})();
  return{date:S.date,site:site(),type:'Service',onArrival:S.state==='Running'?'OK':(S.state||'?'),pics:S.pics,gbUsed:S.gb,cardOut:S.size,span:S.weeks,
   out18:S.out[0],out17:S.out[1],out16:S.out[2],out15:S.out[3],outDead:S.out[4],battIn:inV,cardIn:S.newCard,settings:settingsText(),notes:notesText(),nextWeeks:nextW(),line:line(),id:S.editId||(Date.now()+'-'+Math.random().toString(36).slice(2,6)),update:!!S.editId,st:JSON.parse(JSON.stringify({...S,editId:undefined}))}}
-function missing(){const m=[];if(!site())m.push('site');if(sum(S.out)!==nb())m.push(`batteries out (${sum(S.out)} of ${nb()})`);if(!S.inMode&&sum(S.inn)!==nb())m.push('batteries in');
+function missing(){const m=[];if(!site())m.push('site');if(!S.date)m.push('date');if(sum(S.out)!==nb())m.push(`batteries out (${sum(S.out)} of ${nb()})`);if(!S.inMode&&sum(S.inn)!==nb())m.push('batteries in');
  if(!S.pics)m.push('picture count');if(!S.last)m.push('last picture date');if(!S.newCard)m.push('card put in');if(S.trimmed&&!S.trimPhoto)m.push('trim photo');
  if(S.moved&&!(S.photoPlace&&S.photoView))m.push('reposition photos');if(!S.armed)m.push('armed');if(!S.locked)m.push('locked');return m}
 function done(k){return{arrive:site()&&S.state,batt:sum(S.out)===nb()&&(S.inMode||sum(S.inn)===nb()),card:S.pics&&S.last&&S.newCard,set:S.delayTo!==''||S.video,trim:S.trimmed&&S.trimPhoto,pos:S.moved&&S.photoPlace&&S.photoView,arm:S.armed&&S.locked,notes:false}[k]}
@@ -151,7 +152,7 @@ arrive:()=>{const si=siteInfo();return`<h2>Arrive</h2><p class="hint">Take a loo
  <label>Site<select data-f="site"><option value="">Choose a site</option>${SITES.map(s=>`<option ${S.site===s[0]?'selected':''}>${esc(s[0])}</option>`).join('')}<option value="__other" ${S.site==='__other'?'selected':''}>Other / new site…</option></select></label>
  ${S.site==='__other'?txt('other','Site name','text','Spell it the way the log does')+seg('brand',[['R','Reconyx · 12'],['B','Browning · 6']]):''}
  ${si?`<div class="info"><span><b>${esc(si[1])}</b> · ${si[2]==='B'?'Browning · 6 batteries':'Reconyx · 12 batteries'}</span><span class="hint">Last known settings: ${esc(si[3])}</span></div>`:''}
- ${txt('date','Date','date')}
+ ${txt('date','Date','date')}${S.date!==today()?'<button class="btn" data-today="1">Set to today</button>':''}
  <div><div class="tag" style="margin-bottom:6px">What was it doing?</div>${seg('state',[['Running','Running'],['Card full','Card full'],['Dead','Dead'],['Stopped early?','Something odd']])}</div>
  ${txt('obs','Anything odd (optional)','text','screen off, no card, knocked over…')}`},
 batt:()=>`<h2>Batteries</h2><p class="hint">Count the ones coming out by voltage. Truncate, so 1.79 counts as 1.7.</p>
@@ -165,12 +166,14 @@ card:()=>`<h2>Card</h2>
  <div class="row">${txt('pics','Pictures','number')}${txt('gb','GB used','number')}</div>
  <div class="row"><label>Card size (GB)<select data-f="size"><option value="">–</option>${[32,64,128,256,512].map(s=>`<option ${S.size==s?'selected':''}>${s}</option>`).join('')}</select></label></div>
  <div class="row">${txt('first','First picture','date')}${txt('last','Last picture','date')}</div>
+ <p class="hint" style="margin-top:-6px">Check the newest picture on the card. It's not always today.</p>
  <div class="info"><span>Weeks of pictures: <b>${S.weeks||'–'}</b></span>${S.weeks?'':'<span class="hint">Worked out from the first and last picture dates.</span>'}${S.first&&S.last&&!S.weeks?'<span class="hint" style="color:var(--warn)">The last date is before the first.</span>':''}</div>
  <div class="row">${txt('nextWeeks','Next visit in (weeks)','number',String((siteInfo()&&siteInfo()[4])||P.defaultWeeks))}<label>Card put in (GB)<select data-f="newCard"><option value="">–</option>${SIZES.map(s=>`<option ${S.newCard==s?'selected':''}>${s}</option>`).join('')}</select></label></div>
  <div id="cardHints" style="display:grid;gap:10px">${cardHints()}</div>`,
 set:()=>{const si=siteInfo(),rc=recs();return`<h2>Settings</h2>${si?`<p class="hint">Last known: ${esc(si[3])}</p>`:''}
  ${rc.length?`<div class="info"><b>Suggested</b><ul class="recs">${rc.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`:''}
- <div class="row">${txt('delayFrom','Delay found (min)','number','0')}${txt('delayTo','Delay set (min)','number','1')}</div>
+ <div class="row">${txt('delayFrom','Delay found (min)','number','e.g. 0')}${txt('delayTo','Delay set (min)','number','e.g. 1')}</div>
+ <p class="hint" style="margin-top:-6px">Grey numbers are examples. Only what you type is recorded.</p>
  <div><div class="tag" style="margin-bottom:6px">Video</div>${seg('video',[['was off','Already off'],['off','Turned it off'],['on','Left on for Paul']])}</div>
  ${txt('other2','Other change (optional)','text','burst 5 → 2 shots')}
  ${S.brand==='B'?chk('clock','Date, time, name and mode are right'):''}
@@ -180,7 +183,7 @@ trim:()=>`<h2>Trim</h2><p class="hint">Grass, branches, anything in frame that m
 pos:()=>`<h2>Reposition</h2><p class="hint">Skip this if the camera stayed put.</p>
  ${chk('moved','I moved or re-aimed the camera')}${S.moved?chk('photoPlace','Photo of the camera and where it\'s mounted','photo')+chk('photoView','Test shot from the camera, checked on your phone','photo'):''}`,
 arm:()=>`<h2>Arm & lock</h2>
- ${chk('armed',S.brand==='B'?'Pressed Mode, back on the countdown, waited 30 s':'Pressed OK, saw the green blink and 10 s countdown')}
+ ${chk('armed',S.brand==='B'?'Pressed Mode, back on the countdown, waited 30\u00a0s':'Pressed OK, saw the green blink and 10\u00a0s countdown')}
  ${chk('locked','Locked, sticker on')}`,
 notes:()=>{const m=missing();return`<h2>Save</h2>
  ${m.length?`<div class="alert">Not filled in yet: ${m.join(', ')}</div>`:'<div class="ok">Everything recorded.</div>'}
@@ -222,20 +225,22 @@ function render(){
 function go(i){days=false;step=Math.max(0,Math.min(STEPS.length-1,i));render();window.scrollTo(0,0)}
 
 function readCard(e){const f=[...e.target.files].filter(x=>/\.(jpe?g|mp4|avi|mov)$/i.test(x.name));if(!f.length)return;
- const t=f.map(x=>x.lastModified).sort((a,b)=>a-b),iso=ms=>ymd(new Date(ms));
- S.pics=String(f.length);S.gb=(sum(f.map(x=>x.size))/1e9).toFixed(1);S.first=iso(t[0]);S.last=iso(t[t.length-1]);
+ const iso=ms=>ymd(new Date(ms));
+ const ph=f.filter(x=>/\.jpe?g$/i.test(x.name));if(!ph.length)return;const pt=ph.map(x=>x.lastModified).sort((a,b)=>a-b);
+ S.pics=String(ph.length);S.gb=(sum(f.map(x=>x.size))/1e9).toFixed(1);S.first=iso(pt[0]);S.last=iso(pt[pt.length-1]);
  S.weeks=calcWeeks();S.imported=true;render()}
 
-async function push(){if(pushing||!queue.length||!cfg.url||!navigator.onLine)return;pushing=true;
+async function push(){if(pushing||!queue.length||!cfg.url||!navigator.onLine)return;pushing=true;const batch=queue.slice();
  const m=document.getElementById('syncMsg');if(m)m.textContent='Uploading…';
- try{const r=await fetch(cfg.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({key:cfg.key,rows:queue})});
+ try{const r=await fetch(cfg.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({key:cfg.key,rows:batch})});
   const tx=await r.text();let j;try{j=JSON.parse(tx)}catch(e){throw new Error('the log sent back a web page, not a reply. Check the address and that access is set to Anyone')}if(!j.ok)throw new Error(j.error||'rejected');
-  const done=new Set(j.saved||queue.map(q=>q.id));sent.push(...queue.filter(q=>done.has(q.id)));queue=queue.filter(q=>!done.has(q.id));render();
+  const done=new Set(j.saved||batch.map(q=>q.id)),ok=q=>done.has(q.id)&&batch.includes(q);sent.push(...queue.filter(ok));queue=queue.filter(q=>!ok(q));render();
   const m2=document.getElementById('syncMsg');if(m2)m2.textContent=`Uploaded to the Camera Log.`}
- catch(err){const m3=document.getElementById('syncMsg');if(m3)m3.textContent=`Couldn't upload (${err.message}). Visits are kept and will try again.`}
+ catch(err){const sp=document.getElementById('syncPill');if(sp&&!days)sp.textContent='Upload failed';const m3=document.getElementById('syncMsg');if(m3)m3.textContent=`Couldn't upload (${err.message}). Visits are kept and will try again.`}
  finally{pushing=false}}
 
 document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+ if(b.dataset.today){S.date=today();return render()}
  if(b.dataset.go)return go(+b.dataset.go);
  if(b.dataset.tab){homeTab=b.dataset.tab;return render()}
  if(b.id==='resetP'){P={...PDEF};save();return render()}
@@ -247,14 +252,14 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)r
  if(b.dataset.seg){const f=b.dataset.seg;S[f]=(S[f]===b.dataset.v&&f!=='brand'&&f!=='inMode')?'':b.dataset.v;return render()}
  if(b.dataset.d){const a=S[b.dataset.c],i=+b.dataset.i;a[i]=Math.max(0,(+a[i]||0)+ +b.dataset.d);return render()}
  if(b.id==='saveVisit')return saveVisit(b);
- if(b.id==='discard'){if(!b.dataset.arm){b.dataset.arm=1;b.textContent='Tap again to discard';return}const wasEdit=S.editId;S=blank();step=0;if(wasEdit&&stash){S=stash.S;step=stash.step;stash=null}flash=wasEdit?'Edit discarded. The saved visit is unchanged.':'Visit discarded.';return render()}
+ if(b.id==='discard'){if(!b.dataset.arm){b.dataset.arm=Date.now();b.textContent='Tap again to discard';return}if(Date.now()-b.dataset.arm<700)return;const wasEdit=S.editId;S=blank();step=0;if(wasEdit&&stash){S=stash.S;step=stash.step;stash=null}flash=wasEdit?'Edit discarded. The saved visit is unchanged.':'Visit discarded.';return render()}
  if(b.id==='pushNow')return push();
  if(b.id==='cfgBtn'){showCfg=!showCfg;return render()}
  if(b.id==='cfgTest'){const u=document.getElementById('cfgUrl').value.trim(),k=document.getElementById('cfgKey').value;alertMsg('Testing…');fetch(u+(u.includes('?')?'&':'?')+'key='+encodeURIComponent(k)).then(r=>r.text()).then(t=>{let j;try{j=JSON.parse(t)}catch(e){throw new Error('got a web page instead of the log. Check the address ends in /exec and access is set to Anyone')}alertMsg(j.ok?'Connected to '+j.sheet+'.':'The log answered: '+j.error)}).catch(err=>alertMsg('Test failed: '+err.message));return}
  if(b.id==='cfgSave'){cfg={url:document.getElementById('cfgUrl').value.trim(),key:document.getElementById('cfgKey').value};showCfg=false;render();push()}
 });
-function saveVisit(b){if(!site()){step=0;flash='Choose a site first.';return render()}
- if(missing().length&&!b.dataset.arm){b.dataset.arm=1;b.textContent='Save anyway?';return}
+function saveVisit(b){if(!S.date)S.date=today();if(!site()){step=0;flash='Choose a site first.';return render()}
+ if(missing().length){if(!b.dataset.arm){b.dataset.arm=Date.now();b.textContent='Save anyway?';return}if(Date.now()-b.dataset.arm<700)return}
  const nr=row(),name=site(),wasEdit=S.editId;queue=queue.filter(q=>q.id!==nr.id);sent=sent.filter(q=>q.id!==nr.id);queue.push(nr);
  S=blank();step=0;if(wasEdit&&stash){S=stash.S;step=stash.step;stash=null}flash=wasEdit?`Changes to ${name} saved.${site()?' Back to '+site()+'.':''}`:`${name} saved. Ready for the next camera.`;render();window.scrollTo(0,0);push()}
 function alertMsg(t){const m=document.getElementById('syncMsg');if(m)m.textContent=t}
@@ -268,11 +273,12 @@ document.addEventListener('input',e=>{const t=e.target;
 document.getElementById('back').onclick=()=>go(step-1);
 document.getElementById('next').onclick=()=>{if(days){days=false;return render()}if(step===STEPS.length-1)return saveVisit(document.getElementById('next'));go(step+1)};
 addEventListener('online',push);setInterval(push,15*60e3);
-const APP_VERSION='v13';
+const APP_VERSION='v14';
 async function checkUpdate(){if(!navigator.onLine||location.hostname.endsWith('claude.ai'))return;try{const r=await fetch('version.json?'+Date.now(),{cache:'no-store'});const j=await r.json();
  if(j.v&&j.v!==APP_VERSION&&!document.getElementById('upd')){const d=document.createElement('button');d.id='upd';d.className='btn primary';d.style.cssText='width:100%';d.textContent='New version ready. Tap to update (your visit is kept)';d.onclick=()=>{save();location.reload()};document.querySelector('.app').prepend(d)}}catch(e){}}
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){checkUpdate();push()}});checkUpdate();
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){freshDate();if(!days)render();checkUpdate();push()}});checkUpdate();
 if('serviceWorker' in navigator&&location.protocol==='https:'&&!location.hostname.endsWith('claude.ai'))navigator.serviceWorker.register('sw.js').catch(()=>{});
+const freshDate=()=>{if(!S.editId&&!S.site&&!S.pics&&!sum(S.out))S.date=today()};freshDate();
 render();push();
 </script>
 </body></html>
