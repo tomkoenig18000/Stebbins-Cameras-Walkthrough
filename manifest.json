@@ -1,1 +1,22 @@
-{"name":"Stebbins Camera Service","short_name":"Cameras","start_url":"./","display":"standalone","background_color":"#fff1d4","theme_color":"#2b2114","icons":[{"src":"icon.png","sizes":"512x512","type":"image/png"}]}
+{
+  "name": "Stebbins Camera Service",
+  "short_name": "Cameras",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#fff1d4",
+  "theme_color": "#2b2114",
+  "icons": [
+    {
+      "src": "icons/icon-192-v25.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512-v25.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

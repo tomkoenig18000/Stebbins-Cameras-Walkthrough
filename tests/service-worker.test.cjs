@@ -9,7 +9,7 @@ function worker(){
  vm.runInNewContext(fs.readFileSync(__dirname+'/../sw.js','utf8'),ctx);return {events,requests,state};
 }
 test('new offline shell bypasses stale HTTP cache during installation',async()=>{
- const w=worker();let install;w.events.install({waitUntil:p=>install=p});await install;assert.equal(w.state.precached.length,4);assert.ok(w.state.precached.every(r=>r.cache==='reload'));
+ const w=worker();let install;w.events.install({waitUntil:p=>install=p});await install;assert.ok(['index.html','manifest.json','icons/icon-192-v25.png','icons/icon-512-v25.png','icons/apple-touch-icon-v25.png'].every(path=>w.state.precached.some(r=>r.url.endsWith('/'+path))));assert.ok(w.state.precached.every(r=>r.cache==='reload'));
 });
 test('page navigation fetches fresh HTML and keeps an offline fallback; version checks bypass worker cache',async()=>{
  const w=worker();const req={url:'https://example.test/cameras/?app-update=v18-123',method:'GET',mode:'navigate'};let response;w.events.fetch({request:req,respondWith:p=>response=p});await response;assert.equal(w.requests[0].cache,'no-store');
