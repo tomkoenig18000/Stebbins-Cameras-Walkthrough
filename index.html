@@ -77,6 +77,14 @@ input[type=date]::-webkit-date-and-time-value{text-align:left}
 .foot{font-size:12px;color:var(--mute)}
 button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible{outline:2px solid var(--sage);outline-offset:2px}
 .mode-toggle{align-items:center;font-weight:600}.mode-toggle small{display:block;color:var(--mute);font-weight:400;margin-top:2px}
+.streamlined-switch{position:relative;gap:14px;justify-content:space-between;cursor:pointer}
+.streamlined-switch .mode-copy{flex:1;min-width:0}
+.streamlined-switch input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
+.switch-display{flex:0 0 52px;display:grid;justify-items:center;gap:3px;font-size:13px;line-height:1.3}
+.switch-track{display:block;box-sizing:border-box;width:52px;height:30px;border:2px solid var(--mute);border-radius:18px;background:var(--surf)}
+.switch-track::after{content:"";display:block;width:22px;height:22px;margin:2px;border-radius:50%;background:var(--mute);transform:translateX(0)}
+.streamlined-switch input:checked~.switch-display .switch-track{background:var(--sage);border-color:var(--sage)}
+.streamlined-switch input:checked~.switch-display .switch-track::after{background:var(--surf);transform:translateX(22px)}
 .quick-actions{display:grid;gap:8px}.quick-actions .check{align-items:center;min-height:46px}
 .quick-notes{resize:vertical;min-height:84px}.quick-section{border:0;padding:0;margin:0;min-width:0;display:grid;gap:8px}.quick-section legend{padding:0;margin-bottom:8px}
 .arrival-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.arrival-options button{min-height:44px;text-align:left}
@@ -98,7 +106,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 </style>
 
 <div class="app">
- <div class="top"><div class="app-heading"><h1 id="siteTag">Camera service</h1><span class="app-version" id="appVersion">Version v20</span></div><span style="display:flex;gap:10px;align-items:center"><button class="pill" id="daysBtn">Home</button><span class="sync-status" id="syncPill" role="status" aria-live="polite">Synced</span></span></div>
+ <div class="top"><div class="app-heading"><h1 id="siteTag">Camera service</h1><span class="app-version" id="appVersion">Version v22</span></div><span style="display:flex;gap:10px;align-items:center"><button class="pill" id="daysBtn">Home</button><span class="sync-status" id="syncPill" role="status" aria-live="polite">Synced</span></span></div>
  <section class="update-banner" id="updateBanner" role="status" aria-live="polite" hidden><strong>App update available</strong><p class="update-versions" id="updateVersions"></p><p id="updateMessage">Update before your next visit. Your current visit and saved entries will be kept on this phone.</p><button id="updateApp" type="button">Update now</button></section>
  <div class="test-banner" id="modeBanner" role="status" hidden><strong>TEST MODE</strong><span>Practice visits are flagged in the log and excluded from camera status and ArcGIS.</span></div>
  <div class="alert" id="storageBanner" role="alert" hidden><p id="storageMessage"></p><button class="btn" id="retryLocalSave">Retry phone storage</button></div>
@@ -213,7 +221,7 @@ function quickForm(){return `<h2>Camera visit</h2>
  ${S.editId?'<p class="hint">Saving replaces this saved visit.</p>':''}
  <p class="hint" id="syncMsg" role="status" aria-live="polite">${cfg.url?'Saved visits upload when there’s signal.':'Visits stay on this phone until the Camera Log is connected in Home → Settings.'}</p>
  <div class="seg"><button class="btn" id="discard">${S.editId?'Cancel edit':'Discard visit'}</button></div>`}
-const modeToggle=()=>`<label class="check mode-toggle"><input id="streamlinedMode" type="checkbox" role="switch" ${streamlined?'checked':''}><span>Streamlined mode<small>One page with simple checkboxes. Turn off for the detailed walkthrough.</small></span></label>`;
+const modeToggle=()=>`<label class="check mode-toggle streamlined-switch"><input id="streamlinedMode" type="checkbox" role="switch" aria-label="Streamlined mode" aria-describedby="streamlinedDescription" ${streamlined?'checked':''}><span class="mode-copy">Streamlined mode<small id="streamlinedDescription">${streamlined?'One page with simple checkboxes.':'Detailed walkthrough with each step.'}</small></span><span class="switch-display" aria-hidden="true"><span class="switch-track"></span><span>${streamlined?'On':'Off'}</span></span></label>`;
 
 const R={
 arrive:()=>{const si=siteInfo();return`<h2>Arrive</h2><p class="hint">Take a look before touching anything.</p>
@@ -386,7 +394,7 @@ document.addEventListener('input',e=>{const t=e.target;
  if(t.type==='checkbox'||t.tagName==='SELECT'||t.type==='date'){render();document.querySelector(`[data-f="${f}"]`)?.focus({preventScroll:true})}else{save();const ch=document.getElementById('cardHints');if(ch)ch.innerHTML=cardHints();const sp=document.getElementById('setProj');if(sp)sp.innerHTML=projHtml();document.getElementById('siteTag').textContent=site()||'Camera service'}});
 document.getElementById('back').onclick=()=>go(step-1);
 document.getElementById('next').onclick=()=>{if(days){days=false;return render()}if(quick()||step===STEPS.length-1)return saveVisit(document.getElementById('next'));go(step+1)};
-const APP_VERSION='v21';
+const APP_VERSION='v22';
 let availableVersion='',checkingUpdate=false;
 document.getElementById('appVersion').textContent='Version '+APP_VERSION;
 function newerVersion(version){
