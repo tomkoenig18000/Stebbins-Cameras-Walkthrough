@@ -85,6 +85,11 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 .switch-track::after{content:"";display:block;width:22px;height:22px;margin:2px;border-radius:50%;background:var(--mute);transform:translateX(0)}
 .streamlined-switch input:checked~.switch-display .switch-track{background:var(--sage);border-color:var(--sage)}
 .streamlined-switch input:checked~.switch-display .switch-track::after{background:var(--surf);transform:translateX(22px)}
+.checklist-warning{background:#fff0e8;color:#84240f;border:2px solid #c44723;border-left-width:7px;border-radius:10px;padding:14px;margin-top:4px}
+.checklist-warning strong{display:block;font-size:20px}.checklist-warning p{margin:6px 0 0;line-height:1.45}
+.details-warning{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-top:10px;color:var(--mute);font-size:14px}.details-warning p{margin:4px 0 0}
+#visitWarnings:focus{outline:3px solid #c44723;outline-offset:3px;border-radius:10px}
+#visitWarnings:empty{display:none}
 .quick-actions{display:grid;gap:8px}.quick-actions .check{align-items:center;min-height:46px}
 .quick-notes{resize:vertical;min-height:84px}.quick-section{border:0;padding:0;margin:0;min-width:0;display:grid;gap:8px}.quick-section legend{padding:0;margin-bottom:8px}
 .arrival-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.arrival-options button{min-height:44px;text-align:left}
@@ -106,7 +111,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 </style>
 
 <div class="app">
- <div class="top"><div class="app-heading"><h1 id="siteTag">Camera service</h1><span class="app-version" id="appVersion">Version v22</span></div><span style="display:flex;gap:10px;align-items:center"><button class="pill" id="daysBtn">Home</button><span class="sync-status" id="syncPill" role="status" aria-live="polite">Synced</span></span></div>
+ <div class="top"><div class="app-heading"><h1 id="siteTag">Camera service</h1><span class="app-version" id="appVersion">Version v23</span></div><span style="display:flex;gap:10px;align-items:center"><button class="pill" id="daysBtn">Home</button><span class="sync-status" id="syncPill" role="status" aria-live="polite">Synced</span></span></div>
  <section class="update-banner" id="updateBanner" role="status" aria-live="polite" hidden><strong>App update available</strong><p class="update-versions" id="updateVersions"></p><p id="updateMessage">Update before your next visit. Your current visit and saved entries will be kept on this phone.</p><button id="updateApp" type="button">Update now</button></section>
  <div class="test-banner" id="modeBanner" role="status" hidden><strong>TEST MODE</strong><span>Practice visits are flagged in the log and excluded from camera status and ArcGIS.</span></div>
  <div class="alert" id="storageBanner" role="alert" hidden><p id="storageMessage"></p><button class="btn" id="retryLocalSave">Retry phone storage</button></div>
@@ -124,13 +129,15 @@ const PINFO=[['highRate','High trigger rate','pictures a week that counts as too
 const V=['1.8','1.7','1.6','1.5','dead'],VC=['c18','c17','c16','c15','c0'];
 const ymd=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 const today=()=>ymd(new Date());
-const blank=()=>({date:today(),site:'',other:'',brand:'R',state:'',unlocked:false,obs:'',out:[0,0,0,0,0],inMode:'',inn:[0,0,0,0,0],pics:'',gb:'',size:'',weeks:'',first:'',last:'',imported:false,newCard:'',nextWeeks:'',delayFrom:'',delayTo:'',video:'',other2:'',clock:false,trimmed:false,trimNote:'',trimPhoto:false,moved:false,photoPlace:false,photoView:false,armed:false,locked:false,extra:'',batteriesChanged:false,cardChanged:false,settingsChanged:false,photosTaken:false});
-let P={...PDEF},homeTab='visits',stash=null,flash='',pushing=false,S,step=0,days=false,dayPick='',queue=[],sent=[],cfg={url:'',key:''},showCfg=false,connectionDraft=null,preferencesOpen=false,siteError=false,pushAgain=false,uploadStatus={kind:'',message:''};
+let preferredName='';
+const blank=()=>({servicedBy:preferredName,date:today(),site:'',other:'',brand:'R',state:'',unlocked:false,obs:'',out:[0,0,0,0,0],inMode:'',inn:[0,0,0,0,0],pics:'',gb:'',size:'',weeks:'',first:'',last:'',imported:false,newCard:'',nextWeeks:'',delayFrom:'',delayTo:'',video:'',other2:'',clock:false,trimmed:false,trimNote:'',trimPhoto:false,moved:false,photoPlace:false,photoView:false,armed:false,locked:false,extra:'',batteriesChanged:false,cardChanged:false,settingsChanged:false,photosTaken:false,lensCleaned:false});
+let P={...PDEF},homeTab='visits',stash=null,flash='',pushing=false,S,step=0,days=false,dayPick='',queue=[],sent=[],cfg={url:'',key:''},showCfg=false,connectionDraft=null,preferencesOpen=false,siteError=false,pushAgain=false,discardConfirmation='',saveConfirmation='',uploadStatus={kind:'',message:''};
 const STATE_KEY='cam-state',STATE_SCHEMA=1;
 let persistedBundle=null,stateReadError='';
 try{const raw=localStorage.getItem(STATE_KEY);if(raw){const parsed=JSON.parse(raw);if(parsed.schema!==STATE_SCHEMA||!parsed.values||typeof parsed.values!=='object'||Array.isArray(parsed.values))throw Error('unknown saved format');persistedBundle=parsed.values}}catch(e){stateReadError='Saved phone data could not be read. Keep this page open; do not clear browser data.'}
 const L=k=>{if(stateReadError)return null;if(persistedBundle)return Object.prototype.hasOwnProperty.call(persistedBundle,k)?persistedBundle[k]:null;try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}};
-S=L('cam-visit')||blank();queue=L('cam-queue')||[];sent=L('cam-sent')||[];cfg=L('cam-cfg')||cfg;P={...PDEF,...(L('cam-params')||{})};step=L('cam-step')||0;stash=L('cam-stash');
+preferredName=String(L('cam-serviced-by')||'').trim();
+S=L('cam-visit')||blank();if(!S.editId&&S.servicedBy===undefined)S.servicedBy=preferredName;queue=L('cam-queue')||[];sent=L('cam-sent')||[];cfg=L('cam-cfg')||cfg;P={...PDEF,...(L('cam-params')||{})};step=L('cam-step')||0;stash=L('cam-stash');
 let streamlined=L('cam-streamlined')!==false,testing=L('cam-testing')===true;
 const isTestVisit=()=>testing||S.test===true;
 // Every upload before v16 was a user-confirmed test. Preserve this on retries and edits.
@@ -143,7 +150,7 @@ function storageNotice(message=''){
 }
 function save(overrides={}){
  if(stateReadError){storageNotice(stateReadError);return false}
- const values={'cam-visit':S,'cam-queue':queue,'cam-sent':sent.slice(-300),'cam-cfg':cfg,'cam-params':P,'cam-step':step,'cam-stash':stash,'cam-streamlined':streamlined,'cam-testing':testing,...overrides};
+ const values={'cam-visit':S,'cam-queue':queue,'cam-sent':sent.slice(-300),'cam-cfg':cfg,'cam-params':P,'cam-step':step,'cam-stash':stash,'cam-streamlined':streamlined,'cam-testing':testing,'cam-serviced-by':preferredName,...overrides};
  try{localStorage.setItem(STATE_KEY,JSON.stringify({schema:STATE_SCHEMA,values}));persistedBundle=values;
   // Keep best-effort legacy copies for older cached app shells. The complete snapshot above is authoritative.
   for(const [key,value] of Object.entries(values))try{localStorage.setItem(key,JSON.stringify(value))}catch(e){}
@@ -179,8 +186,9 @@ function recs(){const r=[],pw=S.pics&&+S.weeks>0?S.pics/S.weeks:0,d=daysAgo(S.la
  return r}
 function settingsText(){if(quick())return S.settingsChanged?'Settings changed (details not recorded)':'';const p=[];if(S.delayTo!==''&&S.delayFrom!==S.delayTo)p.push(`Delay ${S.delayFrom===''?'?':S.delayFrom} → ${S.delayTo} min`);
  if(S.video==='off')p.push('Video turned off');if(S.video==='on')p.push('Video left on');if(S.other2)p.push(S.other2);if(S.brand==='B'&&S.clock)p.push('Clock checked');return p.join('; ')}
-function notesText(){const p=[];if(S.obs)p.push(S.obs);if(quick()){if(S.batteriesChanged)p.push('Batteries changed');if(S.cardChanged)p.push('Card changed');if(S.settingsChanged)p.push('Settings changed');if(S.trimmed)p.push('Trimmed vegetation');if(S.moved)p.push('Repositioned');if((S.trimmed||S.moved)&&S.photosTaken)p.push('Photos taken');if(S.armed)p.push('Armed');if(S.locked)p.push('Locked')}else{if(S.trimmed)p.push(S.trimNote?`Cleared ${S.trimNote}`:'Trimmed vegetation');if(S.moved)p.push('Repositioned')}if(S.extra)p.push(S.extra);return p.join('. ')}
-function line(){return (isTestVisit()?'[TEST] ':'')+visitLine()}
+function notesText(){const p=[];if(S.obs)p.push(S.obs);if(quick()){if(S.batteriesChanged)p.push('Batteries changed');if(S.cardChanged)p.push('Card changed');if(S.lensCleaned)p.push('Cleaned lens');if(S.settingsChanged)p.push('Settings changed');if(S.trimmed)p.push('Trimmed vegetation');if(S.moved)p.push('Repositioned');if((S.trimmed||S.moved)&&S.photosTaken)p.push('Photos taken');if(S.armed)p.push('Armed');if(S.locked)p.push('Locked')}else{if(S.batteriesChanged)p.push('Batteries changed');if(S.cardChanged)p.push('Card changed');if(S.trimmed)p.push(S.trimNote?`Cleared ${S.trimNote}`:'Trimmed vegetation');if(S.moved)p.push('Repositioned')}if(S.extra)p.push(S.extra);return p.join('. ')}
+function attribution(){return String(S.servicedBy||'').trim()?'Serviced by: '+String(S.servicedBy).trim():''}
+function line(){const body=visitLine().trimEnd();return (isTestVisit()?'[TEST] ':'')+body+(attribution()?(/[.:]$/.test(body)?' ':'. ')+attribution():'')}
 function visitLine(){if(quick())return `${site()||'[site?]'}: ${notesText()}`;const p=[],o=grp(S.out,'out'),n=S.inMode?`all ${S.inMode} in`:grp(S.inn,'in');if(o)p.push(o);if(n)p.push(n);
  if(S.pics||S.gb){let c=`${S.pics||'?'} for ${S.gb||'?'} gb on ${S.size||'?'}`;if(S.weeks)c+=` in ${S.weeks} weeks`;if(S.state==='Card full'||S.state==='Dead')c+=` (${S.state.toLowerCase()})`;p.push(c)}
  else if(S.state==='Card full'||S.state==='Dead')p.push(S.state.toLowerCase()+' on arrival');
@@ -188,14 +196,26 @@ function visitLine(){if(quick())return `${site()||'[site?]'}: ${notesText()}`;co
  return`${site()||'[site?]'}: `+p.join(', ')}
 // The uploader maps these input fields by header name; formula fields are not written.
 function row(){const inV=S.inMode||(()=>{const i=S.inn.findIndex(Boolean);return sum(S.inn)===nb()&&S.inn.filter(Boolean).length===1?V[i]:grp(S.inn,'').trim()})();
- const record={date:S.date,site:site(),type:isTestVisit()?'Test':'Service',test:isTestVisit(),clientVersion:APP_VERSION,onArrival:S.state==='Running'?'OK':(S.state||'?'),pics:S.pics,gbUsed:S.gb,cardOut:S.size,span:S.weeks,
-  out18:S.out[0],out17:S.out[1],out16:S.out[2],out15:S.out[3],outDead:S.out[4],battIn:inV,cardIn:S.newCard,settings:settingsText(),notes:(isTestVisit()?'[TEST] ':'')+notesText(),nextWeeks:nextW(),line:line(),id:S.editId||(Date.now()+'-'+Math.random().toString(36).slice(2,6)),update:!!S.editId,st:JSON.parse(JSON.stringify({...S,test:isTestVisit(),formMode:quick()?'quick':'detailed',editId:undefined}))};
+ const record={servicedBy:String(S.servicedBy||'').trim(),date:S.date,site:site(),type:isTestVisit()?'Test':'Service',test:isTestVisit(),clientVersion:APP_VERSION,onArrival:S.state==='Running'?'OK':(S.state||'?'),pics:S.pics,gbUsed:S.gb,cardOut:S.size,span:S.weeks,
+  out18:S.out[0],out17:S.out[1],out16:S.out[2],out15:S.out[3],outDead:S.out[4],battIn:inV,cardIn:S.newCard,settings:settingsText(),notes:(isTestVisit()?'[TEST] ':'')+[notesText(),attribution()].filter(Boolean).join('. '),nextWeeks:nextW(),line:line(),id:S.editId||(Date.now()+'-'+Math.random().toString(36).slice(2,6)),update:!!S.editId,st:JSON.parse(JSON.stringify({...S,test:isTestVisit(),formMode:quick()?'quick':'detailed',editId:undefined}))};
  if(quick())for(const f of ['onArrival','pics','gbUsed','cardOut','span','out18','out17','out16','out15','outDead','battIn','cardIn','nextWeeks'])record[f]='';
  return record}
-function missing(){const m=[];if(!site())m.push('site');if(!S.date)m.push('date');if(quick()){if((S.trimmed||S.moved)&&!S.photosTaken)m.push('photos');if(!S.armed)m.push('armed');if(!S.locked)m.push('locked');return m}if(sum(S.out)!==nb())m.push(`batteries out (${sum(S.out)} of ${nb()})`);if(!S.inMode&&sum(S.inn)!==nb())m.push('batteries in');
+const CHECKLIST=[['batteriesChanged','Batteries'],['cardChanged','Card'],['armed','Armed'],['locked','Locked']];
+function criticalMissing(){return CHECKLIST.filter(([field])=>!S[field]).map(([,label])=>label)}
+function missingDetails(){const m=[];if(!site())m.push('site');if(!S.date)m.push('date');if(quick()){if(S.trimmed&&!S.photosTaken)m.push('trim photo');return m}
+ if(sum(S.out)!==nb())m.push(`batteries out (${sum(S.out)} of ${nb()})`);if(!S.inMode&&sum(S.inn)!==nb())m.push('batteries in');
  if(!S.pics)m.push('picture count');if(!S.last)m.push('last picture date');if(!S.newCard)m.push('card put in');if(S.trimmed&&!S.trimPhoto)m.push('trim photo');
- if(S.moved&&!(S.photoPlace&&S.photoView))m.push('reposition photos');if(!S.armed)m.push('armed');if(!S.locked)m.push('locked');return m}
-function done(k){return{arrive:site()&&S.state,batt:sum(S.out)===nb()&&(S.inMode||sum(S.inn)===nb()),card:S.pics&&S.last&&S.newCard,set:S.delayTo!==''||S.video,trim:S.trimmed&&S.trimPhoto,pos:S.moved&&S.photoPlace&&S.photoView,arm:S.armed&&S.locked,notes:false}[k]}
+ if(S.moved&&!(S.photoPlace&&S.photoView))m.push('reposition photos');return m}
+function missing(){return [...criticalMissing(),...missingDetails()]}
+const confirmationKey=()=>JSON.stringify({S,testing,streamlined});
+const confirmingSave=()=>saveConfirmation===confirmationKey();
+const discardLabel=()=>discardConfirmation===confirmationKey()?'Tap again to discard':S.editId?'Cancel edit':'Discard visit';
+function resetConfirmations(){discardConfirmation='';saveConfirmation='';const d=document.getElementById('discard');if(d)d.textContent=S.editId?'Cancel edit':'Discard visit';const n=document.getElementById('next');if(n&&(quick()||step===STEPS.length-1)&&!days)n.textContent=S.editId?'Save changes':'Save visit'}
+function readinessWarnings(){const c=criticalMissing(),m=missingDetails();if(!c.length&&!m.length)return '';return `<div id="visitWarnings" tabindex="-1" ${c.length||confirmingSave()?'role="alert"':''}>
+ ${c.length?`<div class="checklist-warning"><strong>⚠ Checklist incomplete</strong><p>Still unchecked: <b>${c.map(esc).join(', ')}</b>.</p><p>Check these before leaving the camera.${confirmingSave()?' If intentionally skipped, tap Save anyway.':''}</p></div>`:''}
+ ${m.length?`<div class="details-warning"><strong>Details not recorded</strong><p>${m.map(esc).join(', ')}.</p></div>`:''}
+ ${confirmingSave()&&!c.length&&m.length?'<p class="hint">Complete the details, or tap Save anyway.</p>':''}</div>`}
+function done(k){return{arrive:site()&&S.state,batt:S.batteriesChanged&&sum(S.out)===nb()&&(S.inMode||sum(S.inn)===nb()),card:S.cardChanged&&S.pics&&S.last&&S.newCard,set:S.delayTo!==''||S.video,trim:S.trimmed&&S.trimPhoto,pos:S.moved&&S.photoPlace&&S.photoView,arm:S.armed&&S.locked,notes:false}[k]}
 
 function cardHints(){const d=daysAgo(S.last),pw=S.pics&&+S.weeks>0?Math.round(S.pics/S.weeks):0;return` ${d!=null?(d>P.stopDays?`<div class="alert">The last picture is from ${d} days before the visit, so it stopped early. Worth checking settings and vegetation.</div>`:`<div class="ok">Last picture ${d} day${d==1?'':'s'} before the visit. It ran the whole time.</div>`):''}
  ${pw?(pw>P.highRate?`<div class="alert">About ${pw} pictures a week. That's usually settings or vegetation.</div>`:`<p class="hint">About ${pw} pictures a week.</p>`):''}
@@ -206,21 +226,24 @@ const txt=(f,l,type='text',ph='')=>`<label>${l}<input type="${type}" ${type==='n
 const counter=k=>`<div class="count">${V.map((v,i)=>`<div><div class="v ${VC[i]}">${v}</div><div class="n"><input type="number" inputmode="numeric" min="0" data-c="${k}" data-i="${i}" value="${S[k][i]||0}" aria-label="${v==='dead'?'Dead':v+' volt'} batteries ${k==='out'?'coming out':'going in'}"></div><div class="pm"><button data-d="-1" data-c="${k}" data-i="${i}" aria-label="Remove one ${v==='dead'?'dead':v+' volt'} battery ${k==='out'?'coming out':'going in'}">−</button><button data-d="1" data-c="${k}" data-i="${i}" aria-label="Add one ${v==='dead'?'dead':v+' volt'} battery ${k==='out'?'coming out':'going in'}">+</button></div></div>`).join('')}</div>`;
 const tot=k=>{const t=sum(S[k]);return`<div class="tot ${t&&t!==nb()?'bad':''}">${t} of ${nb()}</div>`};
 
+const nameField=()=>`<label>Serviced by<input type="text" data-f="servicedBy" autocomplete="name" value="${esc(S.servicedBy||'')}" placeholder="Name or names"><small class="hint">${S.editId?'Recorded for this visit. Change your phone default in Settings.':'Saved on this phone for your next camera.'}</small></label>`;
 function quickForm(){return `<h2>Camera visit</h2>
  <label>Site<select data-f="site" ${siteError&&S.site!=='__other'?'aria-invalid="true" aria-describedby="siteErrorMessage"':''}><option value="">Choose a site</option>${SITES.map(s=>`<option ${S.site===s[0]?'selected':''}>${esc(s[0])}</option>`).join('')}<option value="__other" ${S.site==='__other'?'selected':''}>Other / new site…</option></select></label>
  ${S.site==='__other'?txt('other','Site name','text','Spell it the way the log does'):''}
  ${siteError?'<p class="alert" id="siteErrorMessage" role="alert">'+(S.site==='__other'?'Enter the site name.':'Choose a site first.')+'</p>':''}
  ${txt('date','Date','date')}${S.date!==today()?'<button class="btn" data-today="1">Set to today</button>':''}
+ ${nameField()}
  <label>Notes<textarea class="quick-notes" data-f="extra" rows="3" placeholder="Anything worth noting…">${esc(S.extra)}</textarea></label>
- <fieldset class="quick-section"><legend class="tag">Work done</legend><div class="quick-actions">
- ${chk('batteriesChanged','Batteries changed')}${chk('cardChanged','Card changed')}${chk('settingsChanged','Settings changed')}
- ${chk('trimmed','Trimmed vegetation')}${chk('moved','Repositioned camera')}
- ${(S.trimmed||S.moved)?chk('photosTaken',`Took photos of ${S.trimmed&&S.moved?'the cleared area, camera position and view':S.trimmed?'the cleared area':'the camera position and view'}`,'photo'):''}
- ${chk('armed','Armed camera')}${chk('locked','Locked camera')}
+ <fieldset class="quick-section"><legend class="tag">Checklist</legend><div class="quick-actions">
+ ${chk('batteriesChanged','Batteries')}${chk('cardChanged','Card')}${chk('lensCleaned','Cleaned Lens')}${chk('settingsChanged','Settings changed')}
+ ${chk('trimmed','Trimmed vegetation')}
+ ${S.trimmed?chk('photosTaken','Took photos of the cleared area','photo'):''}
+ ${chk('armed','Armed')}${chk('locked','Locked')}
  </div></fieldset>
+ ${readinessWarnings()}
  ${S.editId?'<p class="hint">Saving replaces this saved visit.</p>':''}
  <p class="hint" id="syncMsg" role="status" aria-live="polite">${cfg.url?'Saved visits upload when there’s signal.':'Visits stay on this phone until the Camera Log is connected in Home → Settings.'}</p>
- <div class="seg"><button class="btn" id="discard">${S.editId?'Cancel edit':'Discard visit'}</button></div>`}
+ <div class="seg"><button class="btn" id="discard">${discardLabel()}</button></div>`}
 const modeToggle=()=>`<label class="check mode-toggle streamlined-switch"><input id="streamlinedMode" type="checkbox" role="switch" aria-label="Streamlined mode" aria-describedby="streamlinedDescription" ${streamlined?'checked':''}><span class="mode-copy">Streamlined mode<small id="streamlinedDescription">${streamlined?'One page with simple checkboxes.':'Detailed walkthrough with each step.'}</small></span><span class="switch-display" aria-hidden="true"><span class="switch-track"></span><span>${streamlined?'On':'Off'}</span></span></label>`;
 
 const R={
@@ -230,14 +253,15 @@ arrive:()=>{const si=siteInfo();return`<h2>Arrive</h2><p class="hint">Take a loo
  ${siteError?'<p class="alert" id="siteErrorMessage" role="alert">'+(S.site==='__other'?'Enter the site name.':'Choose a site first.')+'</p>':''}
  ${si?`<div class="info"><span><b>${esc(si[1])}</b> · ${si[2]==='B'?'Browning · 6 batteries':'Reconyx · 12 batteries'}</span><span class="hint">Last known settings: ${esc(si[3])}</span></div>`:''}
  ${txt('date','Date','date')}${S.date!==today()?'<button class="btn" data-today="1">Set to today</button>':''}
+ ${nameField()}
  <div><div class="tag" style="margin-bottom:6px">What was it doing?</div>${seg('state',[['Running','Running'],['Card full','Card full'],['Dead','Dead'],['Stopped early?','Something odd']])}</div>
  ${txt('obs','Anything odd (optional)','text','screen off, no card, knocked over…')}`},
-batt:()=>`<h2>Batteries</h2><p class="hint">Count the ones coming out by voltage. Truncate, so 1.79 counts as 1.7.</p>
+batt:()=>`<h2>Batteries</h2>${chk('batteriesChanged','Batteries changed')}<p class="hint">Count the ones coming out by voltage. Truncate, so 1.79 counts as 1.7.</p>
  <div><div class="tag" style="margin-bottom:6px">Coming out</div>${counter('out')}${tot('out')}</div>
  <div><div class="tag" style="margin-bottom:6px">Going in</div>${seg('inMode',[['1.8','All 1.8'],['1.7','All 1.7'],['','Mixed']])}
  ${S.inMode?'':`<div style="margin-top:8px">${counter('inn')}${tot('inn')}</div>`}</div>
  <p class="hint">${S.brand==='B'?'Brownings won\'t turn on with even one dead battery.':'Lithium only. NG24 wants a full 1.8 set.'}</p>`,
-card:()=>`<h2>Card</h2>
+card:()=>`<h2>Card</h2>${chk('cardChanged','Card changed')}
  <label class="drop" for="imp"><b>Read the card</b><span class="hint">Plug in the SD adapter, tap here, open the card's DCIM folder and select all. Only file names, sizes and dates are read; nothing is copied.</span><input type="file" id="imp" multiple></label>
  ${S.imported?'<div class="ok">Filled in from the card. Check the numbers look right.</div>':''}
  <div class="row">${txt('pics','Pictures','number')}${txt('gb','GB used','number')}</div>
@@ -263,14 +287,15 @@ arm:()=>`<h2>Arm & lock</h2>
  ${chk('armed',S.brand==='B'?'Pressed Mode, back on the countdown, waited 30\u00a0s':'Pressed OK, saw the green blink and 10\u00a0s countdown')}
  ${chk('locked','Locked, sticker on')}`,
 notes:()=>{const m=missing();return`<h2>Save</h2>
- ${m.length?`<div class="alert">Not filled in yet: ${m.join(', ')}</div>`:'<div class="ok">Everything recorded.</div>'}
+ ${readinessWarnings()}
+ ${!m.length?'<div class="ok">Everything recorded.</div>':''}
  <div class="line">${esc(line())}</div>
  ${txt('extra','Anything else','text','')}
  ${S.editId?'<p class="hint">Editing a saved visit. Saving replaces it, including in the Camera Log.</p>':''}
- <div class="seg"><button class="btn" id="discard">${S.editId?'Cancel edit':'Discard visit'}</button></div>
+ <div class="seg"><button class="btn" id="discard">${discardLabel()}</button></div>
  <p class="hint" id="syncMsg" role="status" aria-live="polite">Tap ${S.editId?'Save changes':'Save visit'} below. ${cfg.url?'It uploads to the Camera Log when there\'s signal.':'It stays on this phone until the Camera Log is connected (Home → Settings → Connection).'}</p>`}
 };
-const settingsTab=()=>`<div class="mode-options"><label class="check mode-toggle"><input id="testingMode" type="checkbox" role="switch" ${testing?'checked':''}><span>Testing mode<small>Flag practice visits and keep them out of camera status and ArcGIS.</small></span></label>${S.editId&&S.test?'<p class="hint">The saved test visit you are editing will stay marked as a test.</p>':''}</div>
+const settingsTab=()=>`<label>Default service name<input type="text" id="preferredName" autocomplete="name" value="${esc(preferredName)}" placeholder="Name or names"><small class="hint">Saved on this phone for new visits. Saved visits keep their own name.</small></label><div class="mode-options"><label class="check mode-toggle"><input id="testingMode" type="checkbox" role="switch" ${testing?'checked':''}><span>Testing mode<small>Flag practice visits and keep them out of camera status and ArcGIS.</small></span></label>${S.editId&&S.test?'<p class="hint">The saved test visit you are editing will stay marked as a test.</p>':''}</div>
  ${syncBlock()}<details id="detailedPreferences" ${preferencesOpen?'open':''}><summary>Detailed walkthrough preferences</summary><p class="hint" style="margin:12px 0">Warnings and suggestions are saved on this phone.</p>
  ${PINFO.map(([k,l,h])=>`<label class="param"><span>${l}<small>${h}</small></span><input type="number" inputmode="decimal" step="any" data-p="${k}" value="${P[k]}"></label>`).join('')}
  <div class="seg" style="margin-top:12px"><button class="btn" id="resetP">Reset to defaults</button></div></details>`;
@@ -288,7 +313,7 @@ function renderDays(){const all=[...sent.map(r=>({...r,up:1})),...queue.map(r=>(
  ${dates.length?`<label>Day<select id="dayPick">${dates.map(d=>`<option ${d===dayPick?'selected':''}>${d}</option>`).join('')}</select></label>`:''}
  ${rows.length?rows.map(r=>`<div class="info"><span><b>${esc(r.site)}</b>${r.test?'<span class="test-badge">TEST</span>':''} <span class="hint">${r.up?'uploaded':'waiting to upload'}</span></span><span class="line" style="border:0;padding:4px 0;background:none">${esc(r.line)}</span>${r.st?`<button class="btn" data-open="${esc(r.id)}">Open and edit</button>`:'<span class="hint">Saved before editing was added</span>'}</div>`).join(''):'<p class="hint">No visits saved on this phone yet.</p>'}
  ${rows.length?'<div class="seg"><button class="btn" id="copyDay">Copy this day</button></div>':''}<p class="hint" id="syncMsg" role="status" aria-live="polite">${queue.length?`${queue.length} waiting to upload.`:cfg.url?'Everything is uploaded.':'Not connected to the Camera Log. Set it up under Settings.'}</p>${queue.length&&cfg.url?'<div class="seg"><button class="btn" id="pushNow">Upload now</button></div>':''}`}</div>`;
- const next=document.getElementById('next');delete next.dataset.arm;document.getElementById('back').hidden=true;next.textContent=S.site||S.editId?'Back to current visit':'Start a visit';document.getElementById('daysBtn').textContent='Current visit';save();const dp=document.getElementById('dayPick');if(dp)dp.onchange=e=>{dayPick=e.target.value;render()}}
+ const next=document.getElementById('next');document.getElementById('back').hidden=true;next.textContent=S.site||S.editId?'Back to current visit':'Start a visit';document.getElementById('daysBtn').textContent='Current visit';save();}
 function focusKey(el){
  if(!el)return '';if(el.id)return 'id:'+el.id;
  const parts=['f','seg','v','c','i','d','tab','go','open','p','today'].filter(k=>el.dataset&&el.dataset[k]!==undefined).map(k=>[k,el.dataset[k]]);
@@ -298,7 +323,7 @@ function render(){
  const active=document.activeElement,key=focusKey(active),prefs=document.getElementById('detailedPreferences');if(prefs)preferencesOpen=prefs.open;
  const selection=active&&typeof active.selectionStart==='number'?[active.selectionStart,active.selectionEnd]:null;
  renderContent();
- if(key&&!active?.isConnected){const target=[...(document.querySelectorAll?.('button,input,select,textarea,summary')||[])].find(el=>focusKey(el)===key);if(target){target.focus({preventScroll:true});if(selection&&target.setSelectionRange)try{target.setSelectionRange(...selection)}catch(e){}}}
+ if(key&&!active?.isConnected&&active?.tagName!=='SELECT'&&!['date','file'].includes(active?.type)){const target=[...(document.querySelectorAll?.('button,input,select,textarea,summary')||[])].find(el=>focusKey(el)===key);if(target){target.focus({preventScroll:true});if(selection&&target.setSelectionRange)try{target.setSelectionRange(...selection)}catch(e){}}}
  refreshSyncStatus();
 }
 function renderContent(){
@@ -309,19 +334,19 @@ function renderContent(){
   document.getElementById('chips').innerHTML='';document.getElementById('chips').hidden=true;
   document.getElementById('view').innerHTML=(flash?`<div class="ok" role="status" style="margin-bottom:10px">${esc(flash)}</div>`:'')+`<div class="card">${quickForm()}</div>`;flash='';
   document.getElementById('siteTag').textContent=site()||'Camera service';
-  const nx=document.getElementById('next');delete nx.dataset.arm;nx.textContent=S.editId?'Save changes':'Save visit';document.getElementById('back').hidden=true;document.getElementById('daysBtn').textContent='Home';save();return
+  const nx=document.getElementById('next');nx.textContent=confirmingSave()?'Save anyway':S.editId?'Save changes':'Save visit';document.getElementById('back').hidden=true;document.getElementById('daysBtn').textContent='Home';save();return
  }
  document.getElementById('chips').hidden=false;
  document.getElementById('chips').innerHTML=STEPS.map((s,i)=>`<button data-go="${i}" class="${done(s.k)?'done':''}" aria-current="${i===step}">${s.t}</button>`).join('');
  document.getElementById('view').innerHTML=(flash?`<div class="ok" style="margin-bottom:10px">${esc(flash)}</div>`:'')+`<div class="card">${R[STEPS[step].k]()}</div>`;flash='';
  document.getElementById('siteTag').textContent=site()||'Camera service';
- const bk=document.getElementById('back'),nx=document.getElementById('next');delete nx.dataset.arm;bk.hidden=false;bk.disabled=step===0;
- nx.textContent=step===STEPS.length-1?(S.editId?'Save changes':'Save visit'):'Next ›';
+ const bk=document.getElementById('back'),nx=document.getElementById('next');bk.hidden=false;bk.disabled=step===0;
+ nx.textContent=step===STEPS.length-1?(confirmingSave()?'Save anyway':S.editId?'Save changes':'Save visit'):'Next ›';
  document.getElementById('daysBtn').textContent='Home';
  document.querySelector('.chips [aria-current="true"]')?.scrollIntoView({inline:'center',block:'nearest'});
  const imp=document.getElementById('imp');if(imp)imp.onchange=readCard;
  save()}
-function go(i){days=false;step=Math.max(0,Math.min(STEPS.length-1,i));render();window.scrollTo(0,0)}
+function go(i){resetConfirmations();days=false;step=Math.max(0,Math.min(STEPS.length-1,i));render();window.scrollTo(0,0)}
 
 function readCard(e){const f=[...e.target.files].filter(x=>/\.(jpe?g|mp4|avi|mov)$/i.test(x.name));if(!f.length)return;
  const iso=ms=>ymd(new Date(ms));
@@ -331,6 +356,7 @@ function readCard(e){const f=[...e.target.files].filter(x=>/\.(jpe?g|mp4|avi|mov
 
 function refreshSyncStatus(){
  const status=document.getElementById('syncPill'),message=document.getElementById('syncMsg');
+ status.textContent=queue.length?`${navigator.onLine?'':'Offline · '}${queue.length} waiting`:(cfg.url?(navigator.onLine?'All uploaded':'Offline'):'Not connected');status.className='sync-status'+(queue.length||!cfg.url||!navigator.onLine?' pending':'');
  if(pushing){status.textContent='Uploading…';if(message)message.textContent='Uploading visits…';return}
  if(uploadStatus.kind==='error'&&queue.length){status.textContent='Upload failed';status.className='sync-status pending'}
  if(message&&uploadStatus.message&&(uploadStatus.kind!=='success'||(!S.site&&!S.extra&&!S.editId))){message.textContent=uploadStatus.message;if(uploadStatus.kind==='error')message.setAttribute?.('role','alert')}
@@ -349,22 +375,23 @@ async function push(){if(pushing||!queue.length||!cfg.url||!navigator.onLine)ret
   sent=nextSent;queue=nextQueue;succeeded=true;
   uploadStatus={kind:blocked?'error':queue.length?'pending':'success',message:blocked||(queue.length?`${queue.length} visit${queue.length===1?'':'s'} still waiting to upload.`:'Uploaded to the Camera Log.')};
  }catch(err){uploadStatus={kind:'error',message:`Couldn't finish uploading: ${err.message} Visits remain on this phone.`}}
- finally{pushing=false;render();if(succeeded&&pushAgain&&queue.length&&navigator.onLine){pushAgain=false;Promise.resolve().then(push)}}
+ finally{pushing=false;refreshSyncStatus();if(days&&homeTab==='visits'&&document.activeElement?.tagName!=='SELECT')render();if(succeeded&&pushAgain&&queue.length&&navigator.onLine){pushAgain=false;Promise.resolve().then(push)}}
 }
 
 document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+ if(b.id!=='discard'&&b.id!=='saveVisit'&&b.id!=='next')resetConfirmations();
  if(b.dataset.today){S.date=today();return render()}
  if(b.dataset.go)return go(+b.dataset.go);
  if(b.dataset.tab){homeTab=b.dataset.tab;return render()}
  if(b.id==='resetP'){P={...PDEF};save();return render()}
  if(b.id==='daysBtn'){days=!days;return render()}
- if(b.dataset.open){const r=[...queue,...sent].find(x=>x.id===b.dataset.open);if(r&&r.st){if(!S.editId&&(S.site||S.extra||S.pics||sum(S.out)))stash={S:JSON.parse(JSON.stringify(S)),step};siteError=false;S={...blank(),...JSON.parse(JSON.stringify(r.st)),formMode:r.st.formMode||'detailed',editId:r.id};days=false;step=STEPS.length-1;render();window.scrollTo(0,0);return}}
+ if(b.dataset.open){const r=[...queue,...sent].find(x=>x.id===b.dataset.open);if(r&&r.st){if(!S.editId&&(S.site||S.extra||S.pics||sum(S.out)))stash={S:JSON.parse(JSON.stringify(S)),step};siteError=false;S={...blank(),...JSON.parse(JSON.stringify(r.st)),servicedBy:r.st.servicedBy||'',formMode:r.st.formMode||'detailed',editId:r.id};days=false;step=STEPS.length-1;render();window.scrollTo(0,0);return}}
  if(b.id==='closeDays'){days=false;return render()}
  if(b.id==='copyDay'){const t=[...sent,...queue].filter(r=>r.date===dayPick).map(r=>r.line).join('\n');navigator.clipboard?.writeText(t).then(()=>b.textContent='Copied',()=>{});return}
  if(b.dataset.seg){const f=b.dataset.seg;S[f]=(S[f]===b.dataset.v&&f!=='brand'&&f!=='inMode')?'':b.dataset.v;return render()}
  if(b.dataset.d){const a=S[b.dataset.c],i=+b.dataset.i;a[i]=Math.max(0,(+a[i]||0)+ +b.dataset.d);return render()}
  if(b.id==='saveVisit')return saveVisit(b);
- if(b.id==='discard'){if(!b.dataset.arm){b.dataset.arm=Date.now();b.textContent='Tap again to discard';return}if(Date.now()-b.dataset.arm<700)return;const wasEdit=S.editId;siteError=false;S=blank();step=0;if(wasEdit&&stash){S=stash.S;step=stash.step;stash=null}flash=wasEdit?'Edit discarded. The saved visit is unchanged.':'Visit discarded.';return render()}
+ if(b.id==='discard'){if(discardConfirmation!==confirmationKey()){discardConfirmation=confirmationKey();b.textContent='Tap again to discard';return}resetConfirmations();const wasEdit=S.editId;siteError=false;S=blank();step=0;if(wasEdit&&stash){S=stash.S;step=stash.step;stash=null}flash=wasEdit?'Edit discarded. The saved visit is unchanged.':'Visit discarded.';return render()}
  if(b.id==='pushNow')return push();
  if(b.id==='cfgBtn'){showCfg=!showCfg;connectionDraft=showCfg?{...cfg}:null;return render()}
  if(b.id==='retryLocalSave')return save();
@@ -372,29 +399,35 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)r
  if(b.id==='cfgSave'){const nextCfg={url:document.getElementById('cfgUrl').value.trim(),key:document.getElementById('cfgKey').value};if(!save({'cam-cfg':nextCfg}))return;cfg=nextCfg;connectionDraft=null;showCfg=false;uploadStatus={kind:'',message:''};render();push()}
 });
 function saveVisit(b){if(!S.date)S.date=today();if(!site()){step=0;siteError=true;render();document.querySelector(`[data-f="${S.site==='__other'?'other':'site'}"]`)?.focus();return}
- if(missing().length){if(!b.dataset.arm){b.dataset.arm=Date.now();b.textContent='Save anyway?';if(quick())alertMsg('Still unchecked: '+missing().join(', ')+'. Tap again to save anyway.');return}if(Date.now()-b.dataset.arm<700)return}
+ if(missing().length&&!confirmingSave()){saveConfirmation=confirmationKey();render();document.getElementById('visitWarnings')?.focus({preventScroll:false});return}
  const nr=row(),name=(nr.test?'Test visit at ':'')+site(),wasEdit=S.editId;
  const nextQueue=[...queue.filter(q=>q.id!==nr.id),nr],nextSent=sent.filter(q=>q.id!==nr.id);
  const nextVisit=wasEdit&&stash?stash.S:blank(),nextStep=wasEdit&&stash?stash.step:0,nextStash=wasEdit&&stash?null:stash;
- if(!save({'cam-queue':nextQueue,'cam-sent':nextSent,'cam-visit':nextVisit,'cam-step':nextStep,'cam-stash':nextStash})){delete b.dataset.arm;b.textContent=wasEdit?'Save changes':'Save visit';return}
- siteError=false;queue=nextQueue;sent=nextSent;S=nextVisit;step=nextStep;stash=nextStash;
+ if(!save({'cam-queue':nextQueue,'cam-sent':nextSent,'cam-visit':nextVisit,'cam-step':nextStep,'cam-stash':nextStash})){saveConfirmation='';b.textContent=wasEdit?'Save changes':'Save visit';return}
+ resetConfirmations();siteError=false;queue=nextQueue;sent=nextSent;S=nextVisit;step=nextStep;stash=nextStash;
  flash=wasEdit?`Changes to ${name} saved.${site()?' Back to '+site()+'.':''}`:`${name} saved. Ready for the next camera.`;render();window.scrollTo(0,0);if(pushing)pushAgain=true;push()}
 
 function alertMsg(t){const m=document.getElementById('syncMsg');if(m){m.textContent=t;if(t.startsWith('Still unchecked:'))m.setAttribute?.('role','alert')}}
-document.addEventListener('input',e=>{const t=e.target;
+function fieldInput(t){
+ resetConfirmations();
  if(t.id==='cfgUrl'||t.id==='cfgKey'){connectionDraft=connectionDraft||{...cfg};connectionDraft[t.id==='cfgUrl'?'url':'key']=t.value;return}
+ if(t.id==='preferredName'){preferredName=t.value.trim();if(!S.editId)S.servicedBy=t.value;save();return}
  if(t.id==='streamlinedMode'){streamlined=t.checked;S.formMode=streamlined?'quick':'detailed';step=0;save();return render()}
  if(t.id==='testingMode'){testing=t.checked;if(!S.editId)S.test=testing;save();return render()}
  if(t.dataset.p){const v=parseFloat(t.value);if(!isNaN(v)&&v>=0){P[t.dataset.p]=v;save()}return}
  if(t.dataset.c){S[t.dataset.c][+t.dataset.i]=Math.max(0,parseInt(t.value)||0);save();const k=t.dataset.c,el=t.closest('.count').nextElementSibling;if(el){const s=sum(S[k]);el.textContent=`${s} of ${nb()}`;el.className='tot'+(s&&s!==nb()?' bad':'')}return}
  const f=t.dataset.f;if(!f)return;S[f]=t.type==='checkbox'?t.checked:t.value;
+ if(f==='servicedBy'&&!S.editId)preferredName=t.value.trim();
  if(f==='site'){const si=siteInfo();if(si)S.brand=si[2]}
  if((f==='site'||f==='other')&&siteError&&site()){siteError=false;if(f==='other')return render()}
  if(f==='first'||f==='last')S.weeks=calcWeeks();
- if(t.type==='checkbox'||t.tagName==='SELECT'||t.type==='date'){render();document.querySelector(`[data-f="${f}"]`)?.focus({preventScroll:true})}else{save();const ch=document.getElementById('cardHints');if(ch)ch.innerHTML=cardHints();const sp=document.getElementById('setProj');if(sp)sp.innerHTML=projHtml();document.getElementById('siteTag').textContent=site()||'Camera service'}});
+ if(t.type==='checkbox'||t.tagName==='SELECT'||t.type==='date'){render()}else{save();const warnings=document.getElementById('visitWarnings');if(warnings)warnings.outerHTML=readinessWarnings();const ch=document.getElementById('cardHints');if(ch)ch.innerHTML=cardHints();const sp=document.getElementById('setProj');if(sp)sp.innerHTML=projHtml();document.getElementById('siteTag').textContent=site()||'Camera service'}
+}
+document.addEventListener('input',e=>{if(e.target.tagName==='SELECT'||e.target.type==='date'||e.target.type==='file')return;fieldInput(e.target)});
+document.addEventListener('change',e=>{const t=e.target;if(t.id==='dayPick'){resetConfirmations();dayPick=t.value;return render()}if(t.tagName==='SELECT'||t.type==='date')fieldInput(t)});
 document.getElementById('back').onclick=()=>go(step-1);
 document.getElementById('next').onclick=()=>{if(days){days=false;return render()}if(quick()||step===STEPS.length-1)return saveVisit(document.getElementById('next'));go(step+1)};
-const APP_VERSION='v22';
+const APP_VERSION='v23';
 let availableVersion='',checkingUpdate=false;
 document.getElementById('appVersion').textContent='Version '+APP_VERSION;
 function newerVersion(version){
@@ -425,11 +458,11 @@ function applyUpdate(){
  const url=new URL(location.href);url.searchParams.set('app-update',availableVersion+'-'+Date.now());location.replace(url.href);
 }
 document.getElementById('updateApp').onclick=applyUpdate;
-addEventListener('online',()=>{render();checkUpdate();push()});addEventListener('offline',()=>{render();refreshUpdateNotice()});setInterval(push,15*60e3);
+addEventListener('online',()=>{refreshSyncStatus();checkUpdate();push()});addEventListener('offline',()=>{refreshSyncStatus();refreshUpdateNotice()});setInterval(push,15*60e3);
 setInterval(()=>{if(document.visibilityState==='visible')checkUpdate()},60e3);
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){freshDate();if(!days)render();checkUpdate();push()}});checkUpdate();
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){freshDate();refreshSyncStatus();checkUpdate();push()}});checkUpdate();
 if('serviceWorker' in navigator&&location.protocol==='https:'&&!location.hostname.endsWith('claude.ai'))navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).catch(()=>{});
-const freshDate=()=>{if(!S.editId&&!S.site&&!S.extra&&!S.state&&!S.trimmed&&!S.moved&&!S.armed&&!S.locked&&!S.batteriesChanged&&!S.cardChanged&&!S.settingsChanged&&!S.pics&&!sum(S.out))S.date=today()};freshDate();
+const freshDate=()=>{if(!S.editId&&!S.site&&!S.extra&&!S.state&&!S.trimmed&&!S.moved&&!S.armed&&!S.locked&&!S.batteriesChanged&&!S.cardChanged&&!S.settingsChanged&&!S.lensCleaned&&!S.pics&&!sum(S.out)&&S.date!==today()){S.date=today();const dateInput=document.querySelector('[data-f="date"]');if(dateInput)dateInput.value=S.date;save()}};freshDate();
 render();push();
 </script>
 </body></html>
