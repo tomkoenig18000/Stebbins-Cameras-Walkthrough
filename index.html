@@ -21,6 +21,7 @@ h1,h2{font-family:var(--disp);margin:0;line-height:1.05;text-wrap:balance}
 h1{font-size:22px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}h2{font-size:30px}
 .tag{font:500 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
 .top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.app-heading{min-width:0;display:grid;gap:3px}.app-version{font:500 12px var(--mono);color:var(--mute)}
 .pill{white-space:nowrap;font:600 12px var(--body);border-radius:99px;padding:4px 10px;background:var(--sagebg);color:var(--sage);border:0;cursor:pointer}
 .pill.q{background:var(--warnbg);color:var(--warn)}
 .sync-status{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--mute);white-space:nowrap;cursor:default}
@@ -85,6 +86,11 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .home-intro{display:grid;gap:5px}.home-intro h2{font-size:28px}.mode-options{display:grid;gap:8px}.mode-options .check{margin:0}
 .card details>summary{cursor:pointer;font-size:14px;color:var(--mute)}.card details[open]>.param{margin-block:12px}
 .test-banner{border:1px solid #b67615;border-radius:10px;background:#ffdc91;color:#4b3008;padding:12px 14px;display:grid;gap:3px;font-size:13px}.test-banner strong{font-size:12px;letter-spacing:.08em}
+.update-banner{position:sticky;top:8px;z-index:20;align-self:start;display:grid;gap:8px;padding:14px;border:2px solid #658bbb;border-radius:12px;background:#e8f1ff;color:#173557;box-shadow:0 4px 16px rgba(0,0,0,.12)}
+.update-banner[hidden]{display:none}.update-banner strong{font-size:18px}.update-banner p{margin:0;font-size:14px}.update-banner .update-versions{font-size:12px;font-weight:600}
+.update-banner button{min-height:44px;padding:10px 14px;border:0;border-radius:8px;background:#224d7e;color:#fff;font:700 16px var(--body);cursor:pointer}.update-banner button:disabled{opacity:.65;cursor:default}.update-banner button:focus-visible{outline:2px solid currentColor;outline-offset:3px}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .update-banner{background:#24364b;color:#e0edff;border-color:#779ec9}}
+:root[data-theme="dark"] .update-banner{background:#24364b;color:#e0edff;border-color:#779ec9}
 .test-banner[hidden]{display:none}.test-badge{display:inline-block;background:#ffdc91;color:#4b3008;padding:2px 7px;border-radius:5px;font-size:11px;font-weight:700;margin-left:6px}
 :root[data-testing="true"]{--bg:#fff1d4;--surf:#fffaf0;--ink:#493316;--mute:#7b633d;--line:#dfc89f;--sage:#805813;--sagebg:#f6e1b7;--straw:#bd7f1c}
 @media(prefers-color-scheme:dark){:root[data-testing="true"]:not([data-theme="light"]){--bg:#2b2114;--surf:#382a19;--ink:#fff0d4;--mute:#cfb891;--line:#695035;--sage:#e2b15b;--sagebg:#4d391d;--straw:#e2b15b}}
@@ -92,7 +98,8 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 </style>
 
 <div class="app">
- <div class="top"><h1 id="siteTag">Camera service</h1><span style="display:flex;gap:10px;align-items:center"><button class="pill" id="daysBtn">Home</button><span class="sync-status" id="syncPill" role="status" aria-live="polite">Synced</span></span></div>
+ <div class="top"><div class="app-heading"><h1 id="siteTag">Camera service</h1><span class="app-version" id="appVersion">Version v17</span></div><span style="display:flex;gap:10px;align-items:center"><button class="pill" id="daysBtn">Home</button><span class="sync-status" id="syncPill" role="status" aria-live="polite">Synced</span></span></div>
+ <section class="update-banner" id="updateBanner" role="status" aria-live="polite" hidden><strong>App update available</strong><p class="update-versions" id="updateVersions"></p><p id="updateMessage">Update before your next visit. Your current visit and saved entries will be kept on this phone.</p><button id="updateApp" type="button">Update now</button></section>
  <div class="test-banner" id="modeBanner" role="status" hidden><strong>TEST MODE</strong><span>Practice visits are flagged in the log and excluded from camera status and ArcGIS.</span></div>
  <nav class="chips" id="chips" aria-label="Steps"></nav>
  <main id="view"></main>
@@ -119,7 +126,7 @@ for(const r of [...queue,...sent])if(typeof r.test!=='boolean'){r.test=true;r.ty
 // Keep a pre-update detailed draft in its original form. New visits default to quick mode.
 if(!S.formMode&&(S.editId||S.pics||S.gb||S.newCard||S.inMode||S.out.some(Boolean)||S.inn.some(Boolean)))S.formMode='detailed';
 const quick=()=>S.formMode?S.formMode==='quick':streamlined;
-const save=()=>{try{localStorage.setItem('cam-visit',JSON.stringify(S));localStorage.setItem('cam-queue',JSON.stringify(queue));localStorage.setItem('cam-sent',JSON.stringify(sent.slice(-300)));localStorage.setItem('cam-cfg',JSON.stringify(cfg));localStorage.setItem('cam-params',JSON.stringify(P));localStorage.setItem('cam-step',step);localStorage.setItem('cam-stash',JSON.stringify(stash));localStorage.setItem('cam-streamlined',JSON.stringify(streamlined));localStorage.setItem('cam-testing',JSON.stringify(testing))}catch(e){}};
+const save=()=>{try{localStorage.setItem('cam-visit',JSON.stringify(S));localStorage.setItem('cam-queue',JSON.stringify(queue));localStorage.setItem('cam-sent',JSON.stringify(sent.slice(-300)));localStorage.setItem('cam-cfg',JSON.stringify(cfg));localStorage.setItem('cam-params',JSON.stringify(P));localStorage.setItem('cam-step',step);localStorage.setItem('cam-stash',JSON.stringify(stash));localStorage.setItem('cam-streamlined',JSON.stringify(streamlined));localStorage.setItem('cam-testing',JSON.stringify(testing));return true}catch(e){return false}};
 const nb=()=>S.brand==='B'?6:12;
 const site=()=>S.site==='__other'?S.other.trim():S.site;
 const siteInfo=()=>SITES.find(s=>s[0]===S.site);
@@ -331,12 +338,41 @@ document.addEventListener('input',e=>{const t=e.target;
  if(t.type==='checkbox'||t.tagName==='SELECT'||t.type==='date'){render();document.querySelector(`[data-f="${f}"]`)?.focus({preventScroll:true})}else{save();const ch=document.getElementById('cardHints');if(ch)ch.innerHTML=cardHints();const sp=document.getElementById('setProj');if(sp)sp.innerHTML=projHtml();document.getElementById('siteTag').textContent=site()||'Camera service'}});
 document.getElementById('back').onclick=()=>go(step-1);
 document.getElementById('next').onclick=()=>{if(days){days=false;return render()}if(quick()||step===STEPS.length-1)return saveVisit(document.getElementById('next'));go(step+1)};
-addEventListener('online',()=>{render();push()});addEventListener('offline',render);setInterval(push,15*60e3);
-const APP_VERSION='v16';
-async function checkUpdate(){if(!navigator.onLine||location.hostname.endsWith('claude.ai'))return;try{const r=await fetch('version.json?'+Date.now(),{cache:'no-store'});const j=await r.json();
- if(j.v&&j.v!==APP_VERSION&&!document.getElementById('upd')){const d=document.createElement('button');d.id='upd';d.className='btn primary';d.style.cssText='width:100%';d.textContent='New version ready. Tap to update (your visit is kept)';d.onclick=()=>{save();location.reload()};document.querySelector('.app').prepend(d)}}catch(e){}}
+const APP_VERSION='v17';
+let availableVersion='',checkingUpdate=false;
+document.getElementById('appVersion').textContent='Version '+APP_VERSION;
+function newerVersion(version){
+ const parts=v=>/^v\d+(?:\.\d+){0,2}$/.test(v)?v.slice(1).split('.').map(Number):null;
+ const next=parts(version),current=parts(APP_VERSION);if(!next)return false;
+ for(let i=0;i<3;i++){const delta=(next[i]||0)-(current[i]||0);if(delta)return delta>0}return false
+}
+function refreshUpdateNotice(){
+ document.getElementById('updateBanner').hidden=!availableVersion;
+ if(!availableVersion)return;
+ document.getElementById('updateVersions').textContent=`This phone: ${APP_VERSION} · Available: ${availableVersion}`;
+ const button=document.getElementById('updateApp');button.disabled=!navigator.onLine;button.textContent=navigator.onLine?'Update now':'Connect to update';
+}
+async function checkUpdate(){
+ refreshUpdateNotice();if(checkingUpdate||!navigator.onLine||location.hostname.endsWith('claude.ai'))return;
+ checkingUpdate=true;
+ try{const r=await fetch('version.json?'+Date.now(),{cache:'no-store'});if(!r.ok)return;const j=await r.json();
+  if(typeof j.v==='string'&&newerVersion(j.v))availableVersion=j.v;
+  else if(j.v===APP_VERSION)availableVersion='';
+  refreshUpdateNotice();
+ }catch(e){}finally{checkingUpdate=false}
+}
+function applyUpdate(){
+ if(!availableVersion||!navigator.onLine){refreshUpdateNotice();return}
+ if(!save()){document.getElementById('updateMessage').textContent='Update paused: your latest changes could not be saved on this phone. Please keep this page open.';return}
+ const button=document.getElementById('updateApp');button.disabled=true;button.textContent='Updating…';
+ // A fresh navigation URL also bypasses older service workers' HTTP-cached HTML.
+ const url=new URL(location.href);url.searchParams.set('app-update',availableVersion+'-'+Date.now());location.replace(url.href);
+}
+document.getElementById('updateApp').onclick=applyUpdate;
+addEventListener('online',()=>{render();checkUpdate();push()});addEventListener('offline',()=>{render();refreshUpdateNotice()});setInterval(push,15*60e3);
+setInterval(()=>{if(document.visibilityState==='visible')checkUpdate()},60e3);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){freshDate();if(!days)render();checkUpdate();push()}});checkUpdate();
-if('serviceWorker' in navigator&&location.protocol==='https:'&&!location.hostname.endsWith('claude.ai'))navigator.serviceWorker.register('sw.js').catch(()=>{});
+if('serviceWorker' in navigator&&location.protocol==='https:'&&!location.hostname.endsWith('claude.ai'))navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).catch(()=>{});
 const freshDate=()=>{if(!S.editId&&!S.site&&!S.extra&&!S.state&&!S.trimmed&&!S.moved&&!S.armed&&!S.locked&&!S.batteriesChanged&&!S.cardChanged&&!S.settingsChanged&&!S.pics&&!sum(S.out))S.date=today()};freshDate();
 render();push();
 </script>
