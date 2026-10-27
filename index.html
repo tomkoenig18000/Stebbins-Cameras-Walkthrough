@@ -98,7 +98,7 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 </style>
 
 <div class="app">
- <div class="top"><div class="app-heading"><h1 id="siteTag">Camera service</h1><span class="app-version" id="appVersion">Version v18</span></div><span style="display:flex;gap:10px;align-items:center"><button class="pill" id="daysBtn">Home</button><span class="sync-status" id="syncPill" role="status" aria-live="polite">Synced</span></span></div>
+ <div class="top"><div class="app-heading"><h1 id="siteTag">Camera service</h1><span class="app-version" id="appVersion">Version v19</span></div><span style="display:flex;gap:10px;align-items:center"><button class="pill" id="daysBtn">Home</button><span class="sync-status" id="syncPill" role="status" aria-live="polite">Synced</span></span></div>
  <section class="update-banner" id="updateBanner" role="status" aria-live="polite" hidden><strong>App update available</strong><p class="update-versions" id="updateVersions"></p><p id="updateMessage">Update before your next visit. Your current visit and saved entries will be kept on this phone.</p><button id="updateApp" type="button">Update now</button></section>
  <div class="test-banner" id="modeBanner" role="status" hidden><strong>TEST MODE</strong><span>Practice visits are flagged in the log and excluded from camera status and ArcGIS.</span></div>
  <nav class="chips" id="chips" aria-label="Steps"></nav>
@@ -157,18 +157,18 @@ function settingsText(){if(quick())return S.settingsChanged?'Settings changed (d
  if(S.video==='off')p.push('Video turned off');if(S.video==='on')p.push('Video left on');if(S.other2)p.push(S.other2);if(S.brand==='B'&&S.clock)p.push('Clock checked');return p.join('; ')}
 function notesText(){const p=[];if(S.obs)p.push(S.obs);if(quick()){if(S.batteriesChanged)p.push('Batteries changed');if(S.cardChanged)p.push('Card changed');if(S.settingsChanged)p.push('Settings changed');if(S.trimmed)p.push('Trimmed vegetation');if(S.moved)p.push('Repositioned');if((S.trimmed||S.moved)&&S.photosTaken)p.push('Photos taken');if(S.armed)p.push('Armed');if(S.locked)p.push('Locked')}else{if(S.trimmed)p.push(S.trimNote?`Cleared ${S.trimNote}`:'Trimmed vegetation');if(S.moved)p.push('Repositioned')}if(S.extra)p.push(S.extra);return p.join('. ')}
 function line(){return (isTestVisit()?'[TEST] ':'')+visitLine()}
-function visitLine(){if(quick())return `${site()||'[site?]'}: ${[S.state?S.state.toLowerCase()+' on arrival':'',notesText()].filter(Boolean).join(', ')}`;const p=[],o=grp(S.out,'out'),n=S.inMode?`all ${S.inMode} in`:grp(S.inn,'in');if(o)p.push(o);if(n)p.push(n);
+function visitLine(){if(quick())return `${site()||'[site?]'}: ${notesText()}`;const p=[],o=grp(S.out,'out'),n=S.inMode?`all ${S.inMode} in`:grp(S.inn,'in');if(o)p.push(o);if(n)p.push(n);
  if(S.pics||S.gb){let c=`${S.pics||'?'} for ${S.gb||'?'} gb on ${S.size||'?'}`;if(S.weeks)c+=` in ${S.weeks} weeks`;if(S.state==='Card full'||S.state==='Dead')c+=` (${S.state.toLowerCase()})`;p.push(c)}
  else if(S.state==='Card full'||S.state==='Dead')p.push(S.state.toLowerCase()+' on arrival');
  if(S.newCard)p.push(`put in ${S.newCard}`);const st=settingsText();if(st)p.push(st.toLowerCase());const nt=notesText();if(nt)p.push(nt.toLowerCase());
  return`${site()||'[site?]'}: `+p.join(', ')}
 // The uploader maps these input fields by header name; formula fields are not written.
 function row(){const inV=S.inMode||(()=>{const i=S.inn.findIndex(Boolean);return sum(S.inn)===nb()&&S.inn.filter(Boolean).length===1?V[i]:grp(S.inn,'').trim()})();
- const record={date:S.date,site:site(),type:isTestVisit()?'Test':'Service',test:isTestVisit(),clientVersion:'v16',onArrival:S.state==='Running'?'OK':(S.state||'?'),pics:S.pics,gbUsed:S.gb,cardOut:S.size,span:S.weeks,
+ const record={date:S.date,site:site(),type:isTestVisit()?'Test':'Service',test:isTestVisit(),clientVersion:APP_VERSION,onArrival:S.state==='Running'?'OK':(S.state||'?'),pics:S.pics,gbUsed:S.gb,cardOut:S.size,span:S.weeks,
   out18:S.out[0],out17:S.out[1],out16:S.out[2],out15:S.out[3],outDead:S.out[4],battIn:inV,cardIn:S.newCard,settings:settingsText(),notes:(isTestVisit()?'[TEST] ':'')+notesText(),nextWeeks:nextW(),line:line(),id:S.editId||(Date.now()+'-'+Math.random().toString(36).slice(2,6)),update:!!S.editId,st:JSON.parse(JSON.stringify({...S,test:isTestVisit(),formMode:quick()?'quick':'detailed',editId:undefined}))};
- if(quick())for(const f of ['pics','gbUsed','cardOut','span','out18','out17','out16','out15','outDead','battIn','cardIn','nextWeeks'])record[f]='';
+ if(quick())for(const f of ['onArrival','pics','gbUsed','cardOut','span','out18','out17','out16','out15','outDead','battIn','cardIn','nextWeeks'])record[f]='';
  return record}
-function missing(){const m=[];if(!site())m.push('site');if(!S.date)m.push('date');if(quick()){if(!S.state)m.push('arrival condition');if((S.trimmed||S.moved)&&!S.photosTaken)m.push('photos');if(!S.armed)m.push('armed');if(!S.locked)m.push('locked');return m}if(sum(S.out)!==nb())m.push(`batteries out (${sum(S.out)} of ${nb()})`);if(!S.inMode&&sum(S.inn)!==nb())m.push('batteries in');
+function missing(){const m=[];if(!site())m.push('site');if(!S.date)m.push('date');if(quick()){if((S.trimmed||S.moved)&&!S.photosTaken)m.push('photos');if(!S.armed)m.push('armed');if(!S.locked)m.push('locked');return m}if(sum(S.out)!==nb())m.push(`batteries out (${sum(S.out)} of ${nb()})`);if(!S.inMode&&sum(S.inn)!==nb())m.push('batteries in');
  if(!S.pics)m.push('picture count');if(!S.last)m.push('last picture date');if(!S.newCard)m.push('card put in');if(S.trimmed&&!S.trimPhoto)m.push('trim photo');
  if(S.moved&&!(S.photoPlace&&S.photoView))m.push('reposition photos');if(!S.armed)m.push('armed');if(!S.locked)m.push('locked');return m}
 function done(k){return{arrive:site()&&S.state,batt:sum(S.out)===nb()&&(S.inMode||sum(S.inn)===nb()),card:S.pics&&S.last&&S.newCard,set:S.delayTo!==''||S.video,trim:S.trimmed&&S.trimPhoto,pos:S.moved&&S.photoPlace&&S.photoView,arm:S.armed&&S.locked,notes:false}[k]}
@@ -186,7 +186,6 @@ function quickForm(){return `<h2>Camera visit</h2>
  <label>Site<select data-f="site"><option value="">Choose a site</option>${SITES.map(s=>`<option ${S.site===s[0]?'selected':''}>${esc(s[0])}</option>`).join('')}<option value="__other" ${S.site==='__other'?'selected':''}>Other / new site…</option></select></label>
  ${S.site==='__other'?txt('other','Site name','text','Spell it the way the log does'):''}
  ${txt('date','Date','date')}${S.date!==today()?'<button class="btn" data-today="1">Set to today</button>':''}
- <fieldset class="quick-section"><legend class="tag">On arrival</legend>${seg('state',[['Running','Running'],['Card full','Card full'],['Dead','Dead'],['Stopped early?','Something odd']])}</fieldset>
  <label>Notes<textarea class="quick-notes" data-f="extra" rows="3" placeholder="Anything worth noting…">${esc(S.extra)}</textarea></label>
  <fieldset class="quick-section"><legend class="tag">Work done</legend><div class="quick-actions">
  ${chk('batteriesChanged','Batteries changed')}${chk('cardChanged','Card changed')}${chk('settingsChanged','Settings changed')}
@@ -338,7 +337,7 @@ document.addEventListener('input',e=>{const t=e.target;
  if(t.type==='checkbox'||t.tagName==='SELECT'||t.type==='date'){render();document.querySelector(`[data-f="${f}"]`)?.focus({preventScroll:true})}else{save();const ch=document.getElementById('cardHints');if(ch)ch.innerHTML=cardHints();const sp=document.getElementById('setProj');if(sp)sp.innerHTML=projHtml();document.getElementById('siteTag').textContent=site()||'Camera service'}});
 document.getElementById('back').onclick=()=>go(step-1);
 document.getElementById('next').onclick=()=>{if(days){days=false;return render()}if(quick()||step===STEPS.length-1)return saveVisit(document.getElementById('next'));go(step+1)};
-const APP_VERSION='v18';
+const APP_VERSION='v19';
 let availableVersion='',checkingUpdate=false;
 document.getElementById('appVersion').textContent='Version '+APP_VERSION;
 function newerVersion(version){

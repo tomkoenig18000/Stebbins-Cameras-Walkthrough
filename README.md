@@ -2,7 +2,7 @@
 
 A step-by-step phone app for servicing the Stebbins wildlife cameras. Works offline once it's on your home screen, and uploads each visit to the Service Log tab of the Stebbins Camera Log sheet.
 
-Streamlined mode is on by default: one page for site, date, arrival condition, notes and work-done checkboxes. Trimming or repositioning reveals a photo checkbox. Use the toggle on Home to switch to the detailed walkthrough; the preference is saved on the phone. Quick visits record actions in notes and leave uncollected measurements blank.
+Streamlined mode is on by default: one page for site, date, notes and work-done checkboxes. Trimming or repositioning reveals a photo checkbox. Use the toggle on Home to switch to the detailed walkthrough; the preference is saved on the phone. Quick visits record actions in notes and leave uncollected measurements blank.
 
 The default palette is warm amber/brown in both light and dark appearances. Home → Settings → Testing mode changes the screen to red/orange and marks saved visits as tests. The uploader writes Type=Test, a Test checkbox and a [TEST] note; camera summaries exclude those rows, so nightly ArcGIS service status is unchanged by them. Saved tests remain tests when edited. All pre-v16 uploads were confirmed practice records and are classified as tests, including retries from older phones. A test upload is held locally if the connected uploader does not advertise testing-mode support.
 
