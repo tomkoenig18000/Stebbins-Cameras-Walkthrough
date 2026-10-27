@@ -111,7 +111,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 </style>
 
 <div class="app">
- <div class="top"><div class="app-heading"><h1 id="siteTag">Camera service</h1><span class="app-version" id="appVersion">Version v23</span></div><span style="display:flex;gap:10px;align-items:center"><button class="pill" id="daysBtn">Home</button><span class="sync-status" id="syncPill" role="status" aria-live="polite">Synced</span></span></div>
+ <div class="top"><div class="app-heading"><h1 id="siteTag">Camera service</h1><span class="app-version" id="appVersion">Version v24</span></div><span style="display:flex;gap:10px;align-items:center"><button class="pill" id="daysBtn">Home</button><span class="sync-status" id="syncPill" role="status" aria-live="polite">Synced</span></span></div>
  <section class="update-banner" id="updateBanner" role="status" aria-live="polite" hidden><strong>App update available</strong><p class="update-versions" id="updateVersions"></p><p id="updateMessage">Update before your next visit. Your current visit and saved entries will be kept on this phone.</p><button id="updateApp" type="button">Update now</button></section>
  <div class="test-banner" id="modeBanner" role="status" hidden><strong>TEST MODE</strong><span>Practice visits are flagged in the log and excluded from camera status and ArcGIS.</span></div>
  <div class="alert" id="storageBanner" role="alert" hidden><p id="storageMessage"></p><button class="btn" id="retryLocalSave">Retry phone storage</button></div>
@@ -304,16 +304,16 @@ const syncBlock=()=>`<div class="log"><div class="tag">Camera Log</div>
  <div class="seg">${queue.length&&cfg.url?'<button class="btn" id="pushNow">Upload now</button>':''}<button class="btn" id="cfgBtn">${showCfg?'Cancel connection changes':'Connection'}</button></div>
  ${showCfg?`<label>Upload address<input type="url" id="cfgUrl" value="${esc((connectionDraft||cfg).url)}" placeholder="https://script.google.com/macros/s/…/exec"></label><label>Key<input type="password" id="cfgKey" value="${esc((connectionDraft||cfg).key)}"></label><div class="seg"><button class="btn" id="cfgSave">Save connection</button><button class="btn" id="cfgTest">Test connection</button></div>`:''}</div>`;
 
-function renderDays(){const all=[...sent.map(r=>({...r,up:1})),...queue.map(r=>({...r,up:0}))];
+function renderDays(){document.getElementById('siteTag').textContent='Camera service';const all=[...sent.map(r=>({...r,up:1})),...queue.map(r=>({...r,up:0}))];
  const dates=[...new Set(all.map(r=>r.date))].sort().reverse();if(!dayPick||!dates.includes(dayPick))dayPick=dates[0]||today();
  const rows=all.filter(r=>r.date===dayPick);
  document.getElementById('chips').innerHTML='';
  document.getElementById('chips').hidden=true;
- document.getElementById('view').innerHTML=`<div class="card"><div class="home-intro"><h2>Home</h2><p class="hint">Your visits and phone settings.</p></div>${modeToggle()}<div class="tabs"><button data-tab="visits" aria-pressed="${homeTab==='visits'}">Past visits</button><button data-tab="settings" aria-pressed="${homeTab==='settings'}">Settings</button></div>${homeTab==='settings'?settingsTab():`
+ document.getElementById('view').innerHTML=`${flash?`<div class="ok" role="status" style="margin-bottom:10px">${esc(flash)}</div>`:''}<div class="card"><div class="home-intro"><h2>Home</h2><p class="hint">Your visits and phone settings.</p></div>${modeToggle()}<div class="tabs"><button data-tab="visits" aria-pressed="${homeTab==='visits'}">Past visits</button><button data-tab="settings" aria-pressed="${homeTab==='settings'}">Settings</button></div>${homeTab==='settings'?settingsTab():`
  ${dates.length?`<label>Day<select id="dayPick">${dates.map(d=>`<option ${d===dayPick?'selected':''}>${d}</option>`).join('')}</select></label>`:''}
  ${rows.length?rows.map(r=>`<div class="info"><span><b>${esc(r.site)}</b>${r.test?'<span class="test-badge">TEST</span>':''} <span class="hint">${r.up?'uploaded':'waiting to upload'}</span></span><span class="line" style="border:0;padding:4px 0;background:none">${esc(r.line)}</span>${r.st?`<button class="btn" data-open="${esc(r.id)}">Open and edit</button>`:'<span class="hint">Saved before editing was added</span>'}</div>`).join(''):'<p class="hint">No visits saved on this phone yet.</p>'}
  ${rows.length?'<div class="seg"><button class="btn" id="copyDay">Copy this day</button></div>':''}<p class="hint" id="syncMsg" role="status" aria-live="polite">${queue.length?`${queue.length} waiting to upload.`:cfg.url?'Everything is uploaded.':'Not connected to the Camera Log. Set it up under Settings.'}</p>${queue.length&&cfg.url?'<div class="seg"><button class="btn" id="pushNow">Upload now</button></div>':''}`}</div>`;
- const next=document.getElementById('next');document.getElementById('back').hidden=true;next.textContent=S.site||S.editId?'Back to current visit':'Start a visit';document.getElementById('daysBtn').textContent='Current visit';save();}
+ flash='';const next=document.getElementById('next');document.getElementById('back').hidden=true;next.textContent=S.site||S.editId?'Back to current visit':'Start a visit';document.getElementById('daysBtn').textContent='Current visit';save();}
 function focusKey(el){
  if(!el)return '';if(el.id)return 'id:'+el.id;
  const parts=['f','seg','v','c','i','d','tab','go','open','p','today'].filter(k=>el.dataset&&el.dataset[k]!==undefined).map(k=>[k,el.dataset[k]]);
@@ -391,7 +391,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)r
  if(b.dataset.seg){const f=b.dataset.seg;S[f]=(S[f]===b.dataset.v&&f!=='brand'&&f!=='inMode')?'':b.dataset.v;return render()}
  if(b.dataset.d){const a=S[b.dataset.c],i=+b.dataset.i;a[i]=Math.max(0,(+a[i]||0)+ +b.dataset.d);return render()}
  if(b.id==='saveVisit')return saveVisit(b);
- if(b.id==='discard'){if(discardConfirmation!==confirmationKey()){discardConfirmation=confirmationKey();b.textContent='Tap again to discard';return}resetConfirmations();const wasEdit=S.editId;siteError=false;S=blank();step=0;if(wasEdit&&stash){S=stash.S;step=stash.step;stash=null}flash=wasEdit?'Edit discarded. The saved visit is unchanged.':'Visit discarded.';return render()}
+ if(b.id==='discard'){if(discardConfirmation!==confirmationKey()){discardConfirmation=confirmationKey();b.textContent='Tap again to discard';return}resetConfirmations();const wasEdit=S.editId;siteError=false;S=blank();step=0;if(wasEdit&&stash){S=stash.S;step=stash.step;stash=null}flash=wasEdit?'Edit discarded. The saved visit is unchanged.':'Visit discarded.';days=true;homeTab='visits';render();window.scrollTo(0,0);return}
  if(b.id==='pushNow')return push();
  if(b.id==='cfgBtn'){showCfg=!showCfg;connectionDraft=showCfg?{...cfg}:null;return render()}
  if(b.id==='retryLocalSave')return save();
@@ -427,7 +427,7 @@ document.addEventListener('input',e=>{if(e.target.tagName==='SELECT'||e.target.t
 document.addEventListener('change',e=>{const t=e.target;if(t.id==='dayPick'){resetConfirmations();dayPick=t.value;return render()}if(t.tagName==='SELECT'||t.type==='date')fieldInput(t)});
 document.getElementById('back').onclick=()=>go(step-1);
 document.getElementById('next').onclick=()=>{if(days){days=false;return render()}if(quick()||step===STEPS.length-1)return saveVisit(document.getElementById('next'));go(step+1)};
-const APP_VERSION='v23';
+const APP_VERSION='v24';
 let availableVersion='',checkingUpdate=false;
 document.getElementById('appVersion').textContent='Version '+APP_VERSION;
 function newerVersion(version){
