@@ -3,16 +3,16 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Cameras">
-<meta name="theme-color" content="#262a22">
+<meta name="theme-color" content="#2b2114">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon.png">
 </head><body>
 <title>Camera Service Walkthrough</title>
 <style>
-:root{--bg:#f3f2ec;--surf:#fffefa;--ink:#262a22;--mute:#6b6f60;--line:#d9d8cc;--sage:#4f6b46;--sagebg:#e5ecdf;--straw:#e3c46b;--warn:#b1392b;--warnbg:#f7e3de;
+:root{--bg:#fff1d4;--surf:#fffaf0;--ink:#493316;--mute:#7b633d;--line:#dfc89f;--sage:#805813;--sagebg:#f6e1b7;--straw:#bd7f1c;--warn:#b1392b;--warnbg:#f7e3de;
 --disp:"Barlow Condensed","Arial Narrow",sans-serif;--body:"IBM Plex Sans",system-ui,-apple-system,sans-serif;--mono:"IBM Plex Mono",ui-monospace,Menlo,monospace}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#191b16;--surf:#23261f;--ink:#e8e7dc;--mute:#a3a693;--line:#3a3e33;--sage:#93b087;--sagebg:#27321f;--straw:#d9b95c;--warn:#e7786a;--warnbg:#3b2521}}
-:root[data-theme="dark"]{color-scheme:dark;--bg:#191b16;--surf:#23261f;--ink:#e8e7dc;--mute:#a3a693;--line:#3a3e33;--sage:#93b087;--sagebg:#27321f;--straw:#d9b95c;--warn:#e7786a;--warnbg:#3b2521}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#2b2114;--surf:#382a19;--ink:#fff0d4;--mute:#cfb891;--line:#695035;--sage:#e2b15b;--sagebg:#4d391d;--straw:#e2b15b;--warn:#e7786a;--warnbg:#3b2521}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#2b2114;--surf:#382a19;--ink:#fff0d4;--mute:#cfb891;--line:#695035;--sage:#e2b15b;--sagebg:#4d391d;--straw:#e2b15b;--warn:#e7786a;--warnbg:#3b2521}
 *{box-sizing:border-box}
 html,body,button,input,select,label{touch-action:manipulation}
 body{background:var(--bg);color:var(--ink);font:16px/1.45 var(--body);margin:0;padding:0 16px}
@@ -85,20 +85,20 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 .check.photo{border-color:var(--straw);background:var(--surf)}.check:focus-within{outline:2px solid var(--sage);outline-offset:2px}
 .home-intro{display:grid;gap:5px}.home-intro h2{font-size:28px}.mode-options{display:grid;gap:8px}.mode-options .check{margin:0}
 .card details>summary{cursor:pointer;font-size:14px;color:var(--mute)}.card details[open]>.param{margin-block:12px}
-.test-banner{border:1px solid #b67615;border-radius:10px;background:#ffdc91;color:#4b3008;padding:12px 14px;display:grid;gap:3px;font-size:13px}.test-banner strong{font-size:12px;letter-spacing:.08em}
+.test-banner{border:1px solid #c6532f;border-radius:10px;background:#ffb18b;color:#541d0e;padding:12px 14px;display:grid;gap:3px;font-size:13px}.test-banner strong{font-size:12px;letter-spacing:.08em}
 .update-banner{position:sticky;top:8px;z-index:20;align-self:start;display:grid;gap:8px;padding:14px;border:2px solid #658bbb;border-radius:12px;background:#e8f1ff;color:#173557;box-shadow:0 4px 16px rgba(0,0,0,.12)}
 .update-banner[hidden]{display:none}.update-banner strong{font-size:18px}.update-banner p{margin:0;font-size:14px}.update-banner .update-versions{font-size:12px;font-weight:600}
 .update-banner button{min-height:44px;padding:10px 14px;border:0;border-radius:8px;background:#224d7e;color:#fff;font:700 16px var(--body);cursor:pointer}.update-banner button:disabled{opacity:.65;cursor:default}.update-banner button:focus-visible{outline:2px solid currentColor;outline-offset:3px}
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .update-banner{background:#24364b;color:#e0edff;border-color:#779ec9}}
 :root[data-theme="dark"] .update-banner{background:#24364b;color:#e0edff;border-color:#779ec9}
-.test-banner[hidden]{display:none}.test-badge{display:inline-block;background:#ffdc91;color:#4b3008;padding:2px 7px;border-radius:5px;font-size:11px;font-weight:700;margin-left:6px}
-:root[data-testing="true"]{--bg:#fff1d4;--surf:#fffaf0;--ink:#493316;--mute:#7b633d;--line:#dfc89f;--sage:#805813;--sagebg:#f6e1b7;--straw:#bd7f1c}
-@media(prefers-color-scheme:dark){:root[data-testing="true"]:not([data-theme="light"]){--bg:#2b2114;--surf:#382a19;--ink:#fff0d4;--mute:#cfb891;--line:#695035;--sage:#e2b15b;--sagebg:#4d391d;--straw:#e2b15b}}
-:root[data-theme="dark"][data-testing="true"]{--bg:#2b2114;--surf:#382a19;--ink:#fff0d4;--mute:#cfb891;--line:#695035;--sage:#e2b15b;--sagebg:#4d391d;--straw:#e2b15b}
+.test-banner[hidden]{display:none}.test-badge{display:inline-block;background:#ffb18b;color:#541d0e;padding:2px 7px;border-radius:5px;font-size:11px;font-weight:700;margin-left:6px}
+:root[data-testing="true"]{--bg:#fff0e8;--surf:#fff8f3;--ink:#5a2517;--mute:#8c4a36;--line:#e8b39b;--sage:#b33b1b;--sagebg:#fbd7c8;--straw:#d75326;--warn:#b02d1f;--warnbg:#ffe0d5}
+@media(prefers-color-scheme:dark){:root[data-testing="true"]:not([data-theme="light"]){--bg:#301812;--surf:#422118;--ink:#ffeadd;--mute:#e3b09c;--line:#8a4a35;--sage:#ff9d72;--sagebg:#693621;--straw:#fb794b;--warn:#ffb59d;--warnbg:#5c231c}}
+:root[data-theme="dark"][data-testing="true"]{--bg:#301812;--surf:#422118;--ink:#ffeadd;--mute:#e3b09c;--line:#8a4a35;--sage:#ff9d72;--sagebg:#693621;--straw:#fb794b;--warn:#ffb59d;--warnbg:#5c231c}
 </style>
 
 <div class="app">
- <div class="top"><div class="app-heading"><h1 id="siteTag">Camera service</h1><span class="app-version" id="appVersion">Version v17</span></div><span style="display:flex;gap:10px;align-items:center"><button class="pill" id="daysBtn">Home</button><span class="sync-status" id="syncPill" role="status" aria-live="polite">Synced</span></span></div>
+ <div class="top"><div class="app-heading"><h1 id="siteTag">Camera service</h1><span class="app-version" id="appVersion">Version v18</span></div><span style="display:flex;gap:10px;align-items:center"><button class="pill" id="daysBtn">Home</button><span class="sync-status" id="syncPill" role="status" aria-live="polite">Synced</span></span></div>
  <section class="update-banner" id="updateBanner" role="status" aria-live="polite" hidden><strong>App update available</strong><p class="update-versions" id="updateVersions"></p><p id="updateMessage">Update before your next visit. Your current visit and saved entries will be kept on this phone.</p><button id="updateApp" type="button">Update now</button></section>
  <div class="test-banner" id="modeBanner" role="status" hidden><strong>TEST MODE</strong><span>Practice visits are flagged in the log and excluded from camera status and ArcGIS.</span></div>
  <nav class="chips" id="chips" aria-label="Steps"></nav>
@@ -338,7 +338,7 @@ document.addEventListener('input',e=>{const t=e.target;
  if(t.type==='checkbox'||t.tagName==='SELECT'||t.type==='date'){render();document.querySelector(`[data-f="${f}"]`)?.focus({preventScroll:true})}else{save();const ch=document.getElementById('cardHints');if(ch)ch.innerHTML=cardHints();const sp=document.getElementById('setProj');if(sp)sp.innerHTML=projHtml();document.getElementById('siteTag').textContent=site()||'Camera service'}});
 document.getElementById('back').onclick=()=>go(step-1);
 document.getElementById('next').onclick=()=>{if(days){days=false;return render()}if(quick()||step===STEPS.length-1)return saveVisit(document.getElementById('next'));go(step+1)};
-const APP_VERSION='v17';
+const APP_VERSION='v18';
 let availableVersion='',checkingUpdate=false;
 document.getElementById('appVersion').textContent='Version '+APP_VERSION;
 function newerVersion(version){
