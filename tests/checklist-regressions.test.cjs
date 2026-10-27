@@ -70,11 +70,12 @@ test('changing a visit invalidates a pending save-anyway confirmation',()=>{
  assert.match(a.saved('cam-queue')[0].notes,/Gate was stuck/);
 });
 
-test('discard uses exactly two immediate taps and leaves saved visits unchanged',()=>{
+test('discard uses exactly two immediate taps, returns Home, and leaves saved visits unchanged',()=>{
  const a=app();a.run("S.site='Lion Pool';S.extra='unsaved draft'");
  const button={id:'discard',dataset:{},textContent:'Discard visit'};
  a.click(button);assert.equal(a.run('S.site'),'Lion Pool');assert.match(button.textContent,/again/i);
  a.click(button);assert.equal(a.run('S.site'),'');assert.equal(a.run('S.extra'),'');
+ assert.equal(a.run('days'),true);assert.equal(a.run('homeTab'),'visits');assert.match(a.run("document.getElementById('view').innerHTML"),/<h2>Home<\/h2>/);assert.equal(a.run('flash'),'');
  assert.equal(a.run('queue.length'),0);
 });
 
