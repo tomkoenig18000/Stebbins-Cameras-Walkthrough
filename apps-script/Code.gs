@@ -6,7 +6,7 @@ const KEY = 'change-me';
 // Date and Site must stay in columns A and B (lastDataRow and findRow read them).
 const COLS = {'Date':'date','Site':'site','Type':'type','On arrival':'onArrival','Pics':'pics','GB used':'gbUsed',
   'Card out (GB)':'cardOut','Pic span (wk)':'span','Out 1.8':'out18','Out 1.7':'out17','Out 1.6':'out16',
-  'Out 1.5':'out15','Out dead':'outDead','Batt in':'battIn','Card in (GB)':'cardIn','Settings changed':'settings','Notes':'notes'};
+  'Out 1.5':'out15','Out dead':'outDead','Batt in':'battIn','Card in (GB)':'cardIn','Settings changed':'settings','Notes':'notes','Test':'test'};
 // Formula columns (Pics/wk, Card fill, Avg V out, Wks deployed, Res, Card, Batteries) are array formulas in row 2.
 // Never write to them: anything in those cells blocks the formulas and turns the whole column into #REF!.
 
@@ -16,6 +16,8 @@ function doPost(e) {
     lock.waitLock(20000);
     const body = JSON.parse(e.postData.contents);
     if (body.key !== KEY) return out({ok:false, error:'wrong key'});
+    if (body.action === 'capabilities') return out({ok:true,capabilities:{testMode:true}});
+    if (!Array.isArray(body.rows)) return out({ok:false,error:'No visits supplied'});
     const sh = SpreadsheetApp.getActive().getSheetByName('Service Log');
     const props = PropertiesService.getScriptProperties();
     const saved = [];
@@ -24,14 +26,24 @@ function doPost(e) {
     const missing = Object.keys(COLS).filter(h => head.indexOf(h) < 0);
     if (missing.length) return out({ok:false, error:'Service Log is missing columns: ' + missing.join(', ')});
     body.rows.forEach(r => {
+      if (!r.id || !r.site || !r.date) throw new Error('A visit needs an id, site and date');
       const prev = props.getProperty('id_' + r.id);
-      if (prev && !r.update) { saved.push(r.id); return; } // already uploaded
+      let previous;try { previous = JSON.parse(prev || 'null'); } catch (e) {}
+      // All pre-v16 app uploads were confirmed tests. Older clients/queues fail safe.
+      const test = r.test !== false || r.type === 'Test' || (previous && previous.test === true);
+      if (prev && !r.update) {
+        const existing = findRow(sh,prev);
+        if (test && existing) markTestRow_(sh,existing,head);
+        saved.push(r.id); return;
+      }
       const n = (prev && findRow(sh, prev)) || lastDataRow(sh) + 1; // edits overwrite their row
+      const record = {...r,test:!!test,type:test?'Test':(r.type || 'Service'),
+        notes:test?'[TEST] '+String(r.notes || '').replace(/^\[TEST\]\s*/i,''):r.notes};
       where.forEach(([c, k]) => {
-        const v = r[k];
+        const v = record[k];
         sh.getRange(n, c).setValue(v == null ? '' : v);
       });
-      props.setProperty('id_' + r.id, JSON.stringify({n, date: r.date, site: r.site}));
+      props.setProperty('id_' + r.id, JSON.stringify({n, date: r.date, site: r.site,test:!!test}));
       saved.push(r.id);
     });
     return out({ok:true, saved});
@@ -54,7 +66,33 @@ function findRow(sh, prev) {
 // Health check: open the /exec URL with ?key=... in a browser, or tap Test connection in the app.
 function doGet(e) {
   const ok = e && e.parameter && e.parameter.key === KEY;
-  return out(ok ? {ok:true, sheet: SpreadsheetApp.getActive().getName()} : {ok:false, error:'wrong key'});
+  return out(ok ? {ok:true, sheet: SpreadsheetApp.getActive().getName(),capabilities:{testMode:true}} : {ok:false, error:'wrong key'});
+}
+function markTestRow_(sh,n,head) {
+  const column = name => head.indexOf(name) + 1;
+  if (!column('Test')) throw new Error('Missing Test column');
+  sh.getRange(n,column('Type')).setValue('Test');
+  sh.getRange(n,column('Test')).setValue(true);
+  const notes=sh.getRange(n,column('Notes'));
+  notes.setValue('[TEST] '+String(notes.getValue() || '').replace(/^\[TEST\]\s*/i,''));
+  notes.setNote('User-confirmed app test. Excluded from camera summaries and ArcGIS service status.');
+}
+// Run once from the editor: Tom confirmed every app upload before v16 was testing.
+// Uses only uploader-owned id_ metadata, leaving manually entered history alone.
+function markPriorAppUploadsAsTests() {
+  const props=PropertiesService.getScriptProperties(),all=props.getProperties();
+  const sh=SpreadsheetApp.getActive().getSheetByName('Service Log');
+  const head=sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0].map(String);
+  let marked=0,unresolved=0;
+  Object.keys(all).filter(k=>k.indexOf('id_')===0).forEach(k=>{
+    const n=findRow(sh,all[k]);
+    if(!n){unresolved++;return}
+    markTestRow_(sh,n,head);
+    let old;try{old=JSON.parse(all[k])}catch(e){return}
+    props.setProperty(k,JSON.stringify({...old,n,test:true}));marked++;
+  });
+  Logger.log(JSON.stringify({marked,unresolved}));
+  return {marked,unresolved};
 }
 function lastDataRow(sh) {
   const a = sh.getRange('A1:A' + sh.getMaxRows()).getValues();
