@@ -24,6 +24,7 @@ h1{font-size:22px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space
 .pill{white-space:nowrap;font:600 12px var(--body);border-radius:99px;padding:4px 10px;background:var(--sagebg);color:var(--sage);border:0;cursor:pointer}
 .pill.q{background:var(--warnbg);color:var(--warn)}
 .chips{display:flex;gap:4px;overflow-x:auto;padding-bottom:2px}
+.chips[hidden]{display:none}
 .chips button{flex:0 0 auto;font:600 12px var(--body);border:1px solid var(--line);background:var(--surf);color:var(--mute);border-radius:99px;padding:5px 10px;cursor:pointer}
 .chips button.done{background:var(--sagebg);color:var(--sage);border-color:transparent}
 .chips button[aria-current="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
@@ -72,6 +73,9 @@ input[type=date]::-webkit-date-and-time-value{text-align:left}
 .log{display:grid;gap:6px}
 .foot{font-size:12px;color:var(--mute)}
 button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--sage);outline-offset:2px}
+.mode-toggle{align-items:center;font-weight:600}.mode-toggle small{display:block;color:var(--mute);font-weight:400;margin-top:2px}
+.quick-actions{display:grid;gap:8px}.quick-actions .check{align-items:center;min-height:46px}
+.quick-notes{resize:vertical;min-height:84px}.quick-section{border:0;padding:0;margin:0;min-width:0;display:grid;gap:8px}.quick-section legend{padding:0;margin-bottom:8px}
 </style>
 
 <div class="app">
@@ -90,11 +94,15 @@ const PINFO=[['highRate','High trigger rate','pictures a week that counts as too
 const V=['1.8','1.7','1.6','1.5','dead'],VC=['c18','c17','c16','c15','c0'];
 const ymd=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 const today=()=>ymd(new Date());
-const blank=()=>({date:today(),site:'',other:'',brand:'R',state:'',unlocked:false,obs:'',out:[0,0,0,0,0],inMode:'',inn:[0,0,0,0,0],pics:'',gb:'',size:'',weeks:'',first:'',last:'',imported:false,newCard:'',nextWeeks:'',delayFrom:'',delayTo:'',video:'',other2:'',clock:false,trimmed:false,trimNote:'',trimPhoto:false,moved:false,photoPlace:false,photoView:false,armed:false,locked:false,extra:''});
+const blank=()=>({date:today(),site:'',other:'',brand:'R',state:'',unlocked:false,obs:'',out:[0,0,0,0,0],inMode:'',inn:[0,0,0,0,0],pics:'',gb:'',size:'',weeks:'',first:'',last:'',imported:false,newCard:'',nextWeeks:'',delayFrom:'',delayTo:'',video:'',other2:'',clock:false,trimmed:false,trimNote:'',trimPhoto:false,moved:false,photoPlace:false,photoView:false,armed:false,locked:false,extra:'',batteriesChanged:false,cardChanged:false,settingsChanged:false,photosTaken:false});
 let P={...PDEF},homeTab='visits',stash=null,flash='',pushing=false,S,step=0,days=false,dayPick='',queue=[],sent=[],cfg={url:'',key:''},showCfg=false;
 const L=k=>{try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}};
 S=L('cam-visit')||blank();queue=L('cam-queue')||[];sent=L('cam-sent')||[];cfg=L('cam-cfg')||cfg;P={...PDEF,...(L('cam-params')||{})};step=L('cam-step')||0;stash=L('cam-stash');
-const save=()=>{try{localStorage.setItem('cam-visit',JSON.stringify(S));localStorage.setItem('cam-queue',JSON.stringify(queue));localStorage.setItem('cam-sent',JSON.stringify(sent.slice(-300)));localStorage.setItem('cam-cfg',JSON.stringify(cfg));localStorage.setItem('cam-params',JSON.stringify(P));localStorage.setItem('cam-step',step);localStorage.setItem('cam-stash',JSON.stringify(stash))}catch(e){}};
+let streamlined=L('cam-streamlined')!==false;
+// Keep a pre-update detailed draft in its original form. New visits default to quick mode.
+if(!S.formMode&&(S.editId||S.pics||S.gb||S.newCard||S.inMode||S.out.some(Boolean)||S.inn.some(Boolean)))S.formMode='detailed';
+const quick=()=>S.formMode?S.formMode==='quick':streamlined;
+const save=()=>{try{localStorage.setItem('cam-visit',JSON.stringify(S));localStorage.setItem('cam-queue',JSON.stringify(queue));localStorage.setItem('cam-sent',JSON.stringify(sent.slice(-300)));localStorage.setItem('cam-cfg',JSON.stringify(cfg));localStorage.setItem('cam-params',JSON.stringify(P));localStorage.setItem('cam-step',step);localStorage.setItem('cam-stash',JSON.stringify(stash));localStorage.setItem('cam-streamlined',JSON.stringify(streamlined))}catch(e){}};
 const nb=()=>S.brand==='B'?6:12;
 const site=()=>S.site==='__other'?S.other.trim():S.site;
 const siteInfo=()=>SITES.find(s=>s[0]===S.site);
@@ -121,19 +129,21 @@ function recs(){const r=[],pw=S.pics&&+S.weeks>0?S.pics/S.weeks:0,d=daysAgo(S.la
  if(pw&&pw*factor().f>P.highRate&&hasDelay)r.push(`Even with these changes it may take over ${P.highRate} a week. Try a longer delay.`);
  if(d!=null&&d>P.stopDays&&S.state==='Dead')r.push('It died early. Use a full set of fresh 1.8s.');
  return r}
-function settingsText(){const p=[];if(S.delayTo!==''&&S.delayFrom!==S.delayTo)p.push(`Delay ${S.delayFrom===''?'?':S.delayFrom} → ${S.delayTo} min`);
+function settingsText(){if(quick())return S.settingsChanged?'Settings changed (details not recorded)':'';const p=[];if(S.delayTo!==''&&S.delayFrom!==S.delayTo)p.push(`Delay ${S.delayFrom===''?'?':S.delayFrom} → ${S.delayTo} min`);
  if(S.video==='off')p.push('Video turned off');if(S.video==='on')p.push('Video left on');if(S.other2)p.push(S.other2);if(S.brand==='B'&&S.clock)p.push('Clock checked');return p.join('; ')}
-function notesText(){const p=[];if(S.obs)p.push(S.obs);if(S.trimmed)p.push(S.trimNote?`Cleared ${S.trimNote}`:'Trimmed vegetation');if(S.moved)p.push('Repositioned');if(S.extra)p.push(S.extra);return p.join('. ')}
-function line(){const p=[],o=grp(S.out,'out'),n=S.inMode?`all ${S.inMode} in`:grp(S.inn,'in');if(o)p.push(o);if(n)p.push(n);
+function notesText(){const p=[];if(S.obs)p.push(S.obs);if(quick()){if(S.batteriesChanged)p.push('Batteries changed');if(S.cardChanged)p.push('Card changed');if(S.settingsChanged)p.push('Settings changed');if(S.trimmed)p.push('Trimmed vegetation');if(S.moved)p.push('Repositioned');if((S.trimmed||S.moved)&&S.photosTaken)p.push('Photos taken');if(S.armed)p.push('Armed');if(S.locked)p.push('Locked')}else{if(S.trimmed)p.push(S.trimNote?`Cleared ${S.trimNote}`:'Trimmed vegetation');if(S.moved)p.push('Repositioned')}if(S.extra)p.push(S.extra);return p.join('. ')}
+function line(){if(quick())return `${site()||'[site?]'}: ${[S.state?S.state.toLowerCase()+' on arrival':'',notesText()].filter(Boolean).join(', ')}`;const p=[],o=grp(S.out,'out'),n=S.inMode?`all ${S.inMode} in`:grp(S.inn,'in');if(o)p.push(o);if(n)p.push(n);
  if(S.pics||S.gb){let c=`${S.pics||'?'} for ${S.gb||'?'} gb on ${S.size||'?'}`;if(S.weeks)c+=` in ${S.weeks} weeks`;if(S.state==='Card full'||S.state==='Dead')c+=` (${S.state.toLowerCase()})`;p.push(c)}
  else if(S.state==='Card full'||S.state==='Dead')p.push(S.state.toLowerCase()+' on arrival');
  if(S.newCard)p.push(`put in ${S.newCard}`);const st=settingsText();if(st)p.push(st.toLowerCase());const nt=notesText();if(nt)p.push(nt.toLowerCase());
  return`${site()||'[site?]'}: `+p.join(', ')}
-// one Service Log row, columns A–U; grey formula columns (I,J,P,S) left blank for the sheet
+// The uploader maps these input fields by header name; formula fields are not written.
 function row(){const inV=S.inMode||(()=>{const i=S.inn.findIndex(Boolean);return sum(S.inn)===nb()&&S.inn.filter(Boolean).length===1?V[i]:grp(S.inn,'').trim()})();
- return{date:S.date,site:site(),type:'Service',onArrival:S.state==='Running'?'OK':(S.state||'?'),pics:S.pics,gbUsed:S.gb,cardOut:S.size,span:S.weeks,
-  out18:S.out[0],out17:S.out[1],out16:S.out[2],out15:S.out[3],outDead:S.out[4],battIn:inV,cardIn:S.newCard,settings:settingsText(),notes:notesText(),nextWeeks:nextW(),line:line(),id:S.editId||(Date.now()+'-'+Math.random().toString(36).slice(2,6)),update:!!S.editId,st:JSON.parse(JSON.stringify({...S,editId:undefined}))}}
-function missing(){const m=[];if(!site())m.push('site');if(!S.date)m.push('date');if(sum(S.out)!==nb())m.push(`batteries out (${sum(S.out)} of ${nb()})`);if(!S.inMode&&sum(S.inn)!==nb())m.push('batteries in');
+ const record={date:S.date,site:site(),type:'Service',onArrival:S.state==='Running'?'OK':(S.state||'?'),pics:S.pics,gbUsed:S.gb,cardOut:S.size,span:S.weeks,
+  out18:S.out[0],out17:S.out[1],out16:S.out[2],out15:S.out[3],outDead:S.out[4],battIn:inV,cardIn:S.newCard,settings:settingsText(),notes:notesText(),nextWeeks:nextW(),line:line(),id:S.editId||(Date.now()+'-'+Math.random().toString(36).slice(2,6)),update:!!S.editId,st:JSON.parse(JSON.stringify({...S,formMode:quick()?'quick':'detailed',editId:undefined}))};
+ if(quick())for(const f of ['pics','gbUsed','cardOut','span','out18','out17','out16','out15','outDead','battIn','cardIn','nextWeeks'])record[f]='';
+ return record}
+function missing(){const m=[];if(!site())m.push('site');if(!S.date)m.push('date');if(quick()){if(!S.state)m.push('arrival condition');if((S.trimmed||S.moved)&&!S.photosTaken)m.push('photos');if(!S.armed)m.push('armed');if(!S.locked)m.push('locked');return m}if(sum(S.out)!==nb())m.push(`batteries out (${sum(S.out)} of ${nb()})`);if(!S.inMode&&sum(S.inn)!==nb())m.push('batteries in');
  if(!S.pics)m.push('picture count');if(!S.last)m.push('last picture date');if(!S.newCard)m.push('card put in');if(S.trimmed&&!S.trimPhoto)m.push('trim photo');
  if(S.moved&&!(S.photoPlace&&S.photoView))m.push('reposition photos');if(!S.armed)m.push('armed');if(!S.locked)m.push('locked');return m}
 function done(k){return{arrive:site()&&S.state,batt:sum(S.out)===nb()&&(S.inMode||sum(S.inn)===nb()),card:S.pics&&S.last&&S.newCard,set:S.delayTo!==''||S.video,trim:S.trimmed&&S.trimPhoto,pos:S.moved&&S.photoPlace&&S.photoView,arm:S.armed&&S.locked,notes:false}[k]}
@@ -146,6 +156,23 @@ const chk=(f,l,cls='')=>`<label class="check ${cls}"><input type="checkbox" data
 const txt=(f,l,type='text',ph='')=>`<label>${l}<input type="${type}" ${type==='number'?'inputmode="decimal"':''} data-f="${f}" value="${esc(S[f])}" placeholder="${ph}"></label>`;
 const counter=k=>`<div class="count">${V.map((v,i)=>`<div><div class="v ${VC[i]}">${v}</div><div class="n"><input type="number" inputmode="numeric" min="0" data-c="${k}" data-i="${i}" value="${S[k][i]||0}" aria-label="${v} ${k}"></div><div class="pm"><button data-d="-1" data-c="${k}" data-i="${i}" aria-label="minus">−</button><button data-d="1" data-c="${k}" data-i="${i}" aria-label="plus">+</button></div></div>`).join('')}</div>`;
 const tot=k=>{const t=sum(S[k]);return`<div class="tot ${t&&t!==nb()?'bad':''}">${t} of ${nb()}</div>`};
+
+function quickForm(){return `<h2>Camera visit</h2>
+ <label>Site<select data-f="site"><option value="">Choose a site</option>${SITES.map(s=>`<option ${S.site===s[0]?'selected':''}>${esc(s[0])}</option>`).join('')}<option value="__other" ${S.site==='__other'?'selected':''}>Other / new site…</option></select></label>
+ ${S.site==='__other'?txt('other','Site name','text','Spell it the way the log does'):''}
+ ${txt('date','Date','date')}${S.date!==today()?'<button class="btn" data-today="1">Set to today</button>':''}
+ <fieldset class="quick-section"><legend class="tag">On arrival</legend>${seg('state',[['Running','Running'],['Card full','Card full'],['Dead','Dead'],['Stopped early?','Something odd']])}</fieldset>
+ <label>Notes<textarea class="quick-notes" data-f="extra" rows="3" placeholder="Anything worth noting…">${esc(S.extra)}</textarea></label>
+ <fieldset class="quick-section"><legend class="tag">Work done</legend><div class="quick-actions">
+ ${chk('batteriesChanged','Batteries changed')}${chk('cardChanged','Card changed')}${chk('settingsChanged','Settings changed')}
+ ${chk('trimmed','Trimmed vegetation')}${chk('moved','Repositioned camera')}
+ ${(S.trimmed||S.moved)?chk('photosTaken','Took photos','photo'):''}
+ ${chk('armed','Armed camera')}${chk('locked','Locked camera')}
+ </div></fieldset>
+ ${S.editId?'<p class="hint">Saving replaces this saved visit.</p>':''}
+ <p class="hint" id="syncMsg">${cfg.url?'Saved visits upload when there’s signal.':'Visits stay on this phone until the Camera Log is connected in Home → Settings.'}</p>
+ <div class="seg"><button class="btn" id="discard">${S.editId?'Cancel edit':'Discard visit'}</button></div>`}
+const modeToggle=()=>`<label class="check mode-toggle"><input id="streamlinedMode" type="checkbox" role="switch" ${streamlined?'checked':''}><span>Streamlined mode<small>One page with simple checkboxes. Turn off for the detailed walkthrough.</small></span></label>`;
 
 const R={
 arrive:()=>{const si=siteInfo();return`<h2>Arrive</h2><p class="hint">Take a look before touching anything.</p>
@@ -205,13 +232,22 @@ function renderDays(){const all=[...sent.map(r=>({...r,up:1})),...queue.map(r=>(
  const dates=[...new Set(all.map(r=>r.date))].sort().reverse();if(!dayPick||!dates.includes(dayPick))dayPick=dates[0]||today();
  const rows=all.filter(r=>r.date===dayPick);
  document.getElementById('chips').innerHTML='';
- document.getElementById('view').innerHTML=`<div class="card"><div class="tabs"><button data-tab="visits" aria-pressed="${homeTab==='visits'}">Past visits</button><button data-tab="settings" aria-pressed="${homeTab==='settings'}">Settings</button></div>${homeTab==='settings'?settingsTab():`
+ document.getElementById('chips').hidden=true;
+ document.getElementById('view').innerHTML=`<div class="card">${modeToggle()}<div class="tabs"><button data-tab="visits" aria-pressed="${homeTab==='visits'}">Past visits</button><button data-tab="settings" aria-pressed="${homeTab==='settings'}">Settings</button></div>${homeTab==='settings'?settingsTab():`
  ${dates.length?`<label>Day<select id="dayPick">${dates.map(d=>`<option ${d===dayPick?'selected':''}>${d}</option>`).join('')}</select></label>`:''}
  ${rows.length?rows.map(r=>`<div class="info"><span><b>${esc(r.site)}</b> <span class="hint">${r.up?'uploaded':'waiting to upload'}</span></span><span class="line" style="border:0;padding:4px 0;background:none">${esc(r.line)}</span>${r.st?`<button class="btn" data-open="${esc(r.id)}">Open and edit</button>`:'<span class="hint">Saved before editing was added</span>'}</div>`).join(''):'<p class="hint">No visits saved on this phone yet.</p>'}
  ${rows.length?'<div class="seg"><button class="btn" id="copyDay">Copy this day</button></div>':''}<p class="hint" id="syncMsg">${queue.length?`${queue.length} waiting to upload.`:cfg.url?'Everything is uploaded.':'Not connected to the Camera Log. Set it up under Settings.'}</p>${queue.length&&cfg.url?'<div class="seg"><button class="btn" id="pushNow">Upload now</button></div>':''}`}</div>`;
- document.getElementById('back').hidden=true;document.getElementById('next').textContent=S.site||S.editId?'Back to current visit':'Start a visit';document.getElementById('daysBtn').textContent='Current visit';const dp=document.getElementById('dayPick');if(dp)dp.onchange=e=>{dayPick=e.target.value;renderDays()}}
+ const next=document.getElementById('next');delete next.dataset.arm;document.getElementById('back').hidden=true;next.textContent=S.site||S.editId?'Back to current visit':'Start a visit';document.getElementById('daysBtn').textContent='Current visit';save();const dp=document.getElementById('dayPick');if(dp)dp.onchange=e=>{dayPick=e.target.value;renderDays()}}
 function render(){
  if(days)return renderDays();
+ if(quick()){
+  document.getElementById('chips').innerHTML='';document.getElementById('chips').hidden=true;
+  document.getElementById('view').innerHTML=(flash?`<div class="ok" role="status" style="margin-bottom:10px">${esc(flash)}</div>`:'')+`<div class="card">${quickForm()}</div>`;flash='';
+  document.getElementById('siteTag').textContent=site()||'Camera service';
+  const p=document.getElementById('syncPill');p.textContent=queue.length?`${queue.length} to upload`:(cfg.url?'All uploaded':'Not connected');p.className='pill'+(queue.length||!cfg.url?' q':'');
+  const nx=document.getElementById('next');delete nx.dataset.arm;nx.textContent=S.editId?'Save changes':'Save visit';document.getElementById('back').hidden=true;document.getElementById('daysBtn').textContent='Home';save();return
+ }
+ document.getElementById('chips').hidden=false;
  document.getElementById('chips').innerHTML=STEPS.map((s,i)=>`<button data-go="${i}" class="${done(s.k)?'done':''}" aria-current="${i===step}">${s.t}</button>`).join('');
  document.getElementById('view').innerHTML=(flash?`<div class="ok" style="margin-bottom:10px">${esc(flash)}</div>`:'')+`<div class="card">${R[STEPS[step].k]()}</div>`;flash='';
  document.getElementById('siteTag').textContent=site()||'Camera service';
@@ -245,7 +281,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)r
  if(b.dataset.tab){homeTab=b.dataset.tab;return render()}
  if(b.id==='resetP'){P={...PDEF};save();return render()}
  if(b.id==='daysBtn'){days=!days;return render()}
- if(b.dataset.open){const r=[...queue,...sent].find(x=>x.id===b.dataset.open);if(r&&r.st){if(!S.editId&&(S.site||S.pics||sum(S.out)))stash={S:JSON.parse(JSON.stringify(S)),step};S={...blank(),...JSON.parse(JSON.stringify(r.st)),editId:r.id};days=false;step=STEPS.length-1;render();window.scrollTo(0,0);return}}
+ if(b.dataset.open){const r=[...queue,...sent].find(x=>x.id===b.dataset.open);if(r&&r.st){if(!S.editId&&(S.site||S.extra||S.pics||sum(S.out)))stash={S:JSON.parse(JSON.stringify(S)),step};S={...blank(),...JSON.parse(JSON.stringify(r.st)),formMode:r.st.formMode||'detailed',editId:r.id};days=false;step=STEPS.length-1;render();window.scrollTo(0,0);return}}
  if(b.id==='closeDays'){days=false;return render()}
  if(b.id==='copyDay'){const t=[...sent,...queue].filter(r=>r.date===dayPick).map(r=>r.line).join('\n');navigator.clipboard?.writeText(t).then(()=>b.textContent='Copied',()=>{});return}
  if(b.id==='syncPill'){days=true;return render()}
@@ -259,11 +295,12 @@ document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)r
  if(b.id==='cfgSave'){cfg={url:document.getElementById('cfgUrl').value.trim(),key:document.getElementById('cfgKey').value};showCfg=false;render();push()}
 });
 function saveVisit(b){if(!S.date)S.date=today();if(!site()){step=0;flash='Choose a site first.';return render()}
- if(missing().length){if(!b.dataset.arm){b.dataset.arm=Date.now();b.textContent='Save anyway?';return}if(Date.now()-b.dataset.arm<700)return}
+ if(missing().length){if(!b.dataset.arm){b.dataset.arm=Date.now();b.textContent='Save anyway?';if(quick())alertMsg('Still unchecked: '+missing().join(', ')+'. Tap again to save anyway.');return}if(Date.now()-b.dataset.arm<700)return}
  const nr=row(),name=site(),wasEdit=S.editId;queue=queue.filter(q=>q.id!==nr.id);sent=sent.filter(q=>q.id!==nr.id);queue.push(nr);
  S=blank();step=0;if(wasEdit&&stash){S=stash.S;step=stash.step;stash=null}flash=wasEdit?`Changes to ${name} saved.${site()?' Back to '+site()+'.':''}`:`${name} saved. Ready for the next camera.`;render();window.scrollTo(0,0);push()}
 function alertMsg(t){const m=document.getElementById('syncMsg');if(m)m.textContent=t}
 document.addEventListener('input',e=>{const t=e.target;
+ if(t.id==='streamlinedMode'){streamlined=t.checked;S.formMode=streamlined?'quick':'detailed';step=0;save();return render()}
  if(t.dataset.p){const v=parseFloat(t.value);if(!isNaN(v)&&v>=0){P[t.dataset.p]=v;save()}return}
  if(t.dataset.c){S[t.dataset.c][+t.dataset.i]=Math.max(0,parseInt(t.value)||0);save();const k=t.dataset.c,el=t.closest('.count').nextElementSibling;if(el){const s=sum(S[k]);el.textContent=`${s} of ${nb()}`;el.className='tot'+(s&&s!==nb()?' bad':'')}return}
  const f=t.dataset.f;if(!f)return;S[f]=t.type==='checkbox'?t.checked:t.value;
@@ -271,14 +308,14 @@ document.addEventListener('input',e=>{const t=e.target;
  if(f==='first'||f==='last')S.weeks=calcWeeks();
  if(t.type==='checkbox'||t.tagName==='SELECT'||t.type==='date')render();else{save();const ch=document.getElementById('cardHints');if(ch)ch.innerHTML=cardHints();const sp=document.getElementById('setProj');if(sp)sp.innerHTML=projHtml();document.getElementById('siteTag').textContent=site()||'Camera service'}});
 document.getElementById('back').onclick=()=>go(step-1);
-document.getElementById('next').onclick=()=>{if(days){days=false;return render()}if(step===STEPS.length-1)return saveVisit(document.getElementById('next'));go(step+1)};
+document.getElementById('next').onclick=()=>{if(days){days=false;return render()}if(quick()||step===STEPS.length-1)return saveVisit(document.getElementById('next'));go(step+1)};
 addEventListener('online',push);setInterval(push,15*60e3);
-const APP_VERSION='v14';
+const APP_VERSION='v15';
 async function checkUpdate(){if(!navigator.onLine||location.hostname.endsWith('claude.ai'))return;try{const r=await fetch('version.json?'+Date.now(),{cache:'no-store'});const j=await r.json();
  if(j.v&&j.v!==APP_VERSION&&!document.getElementById('upd')){const d=document.createElement('button');d.id='upd';d.className='btn primary';d.style.cssText='width:100%';d.textContent='New version ready. Tap to update (your visit is kept)';d.onclick=()=>{save();location.reload()};document.querySelector('.app').prepend(d)}}catch(e){}}
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){freshDate();if(!days)render();checkUpdate();push()}});checkUpdate();
 if('serviceWorker' in navigator&&location.protocol==='https:'&&!location.hostname.endsWith('claude.ai'))navigator.serviceWorker.register('sw.js').catch(()=>{});
-const freshDate=()=>{if(!S.editId&&!S.site&&!S.pics&&!sum(S.out))S.date=today()};freshDate();
+const freshDate=()=>{if(!S.editId&&!S.site&&!S.extra&&!S.state&&!S.trimmed&&!S.moved&&!S.armed&&!S.locked&&!S.batteriesChanged&&!S.cardChanged&&!S.settingsChanged&&!S.pics&&!sum(S.out))S.date=today()};freshDate();
 render();push();
 </script>
 </body></html>

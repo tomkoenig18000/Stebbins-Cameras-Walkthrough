@@ -2,6 +2,8 @@
 
 A step-by-step phone app for servicing the Stebbins wildlife cameras. Works offline once it's on your home screen, and uploads each visit to the Service Log tab of the Stebbins Camera Log sheet.
 
+Streamlined mode is on by default: one page for site, date, arrival condition, notes and work-done checkboxes. Trimming or repositioning reveals a photo checkbox. Use the toggle on Home to switch to the detailed walkthrough; the preference is saved on the phone. Quick visits record actions in notes and leave uncollected measurements blank.
+
 ## Install on a phone
 Open the site in Safari, tap Share → Add to Home Screen. Open it once with signal so it saves itself for offline use.
 
