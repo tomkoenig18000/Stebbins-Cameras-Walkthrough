@@ -5,15 +5,15 @@ const vm=require('node:vm');
 const script=fs.readFileSync(__dirname+'/../index.html','utf8').match(/<script>([\s\S]*?)<\/script>/)[1];
 function app(initial={}) {
  const data=new Map(Object.entries(initial).map(([k,v])=>[k,JSON.stringify(v)]));
- const elements=new Map();
+ const elements=new Map(),intervals=[],events={};
  const el=id=>{if(!elements.has(id))elements.set(id,{dataset:{},textContent:'',innerHTML:'',hidden:false});return elements.get(id)};
  const context=vm.createContext({console,Date,Math,JSON,Set,URL,
   localStorage:{getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,v)},
-  document:{documentElement:{dataset:{}},getElementById:el,querySelector:()=>null,addEventListener:()=>{}},
+  document:{documentElement:{dataset:{}},visibilityState:'visible',getElementById:el,querySelector:()=>null,addEventListener:()=>{}},
   navigator:{onLine:false},location:{hostname:'localhost',protocol:'http:'},
-  window:{scrollTo:()=>{}},addEventListener:()=>{},setInterval:()=>{}});
+  window:{scrollTo:()=>{}},addEventListener:(event,fn)=>{events[event]=fn},setInterval:(fn,ms)=>intervals.push({fn,ms})});
  vm.runInContext(script,context);
- return {run:s=>vm.runInContext(s,context),data,el};
+ return {run:s=>vm.runInContext(s,context),data,el,intervals,events};
 }
 test('new installs use a single-page quick form; explicit detailed preference persists',()=>{
  const a=app();assert.equal(a.run('quick()'),true);
@@ -63,4 +63,33 @@ test('pre-update detailed drafts keep their measurements and walkthrough',()=>{
  const a=app({'cam-visit':seed});assert.equal(a.run('quick()'),false);
  assert.equal(a.run('row().pics'),'123');assert.equal(a.run('row().out18'),12);
  assert.equal(a.run('row().st.formMode'),'detailed');
+});
+
+test('version is visible and a newer release shows installed and available versions',async()=>{
+ const a=app();assert.equal(a.el('appVersion').textContent,'Version v17');assert.equal(a.el('updateBanner').hidden,true);
+ a.run("navigator.onLine=true;fetch=async()=>({ok:true,json:async()=>({v:'v18'})})");await a.run('checkUpdate()');
+ assert.equal(a.el('updateBanner').hidden,false);assert.equal(a.el('updateVersions').textContent,'This phone: v17 · Available: v18');assert.equal(a.el('updateApp').textContent,'Update now');
+ a.run("fetch=async()=>({ok:true,json:async()=>({v:'v17'})})");await a.run('checkUpdate()');assert.equal(a.el('updateBanner').hidden,true);
+});
+test('cached older or malformed versions do not prompt; a failed check does not erase a known update',async()=>{
+ const a=app();a.run('navigator.onLine=true');
+ for(const v of ['v16','v17','garbage','v17-beta']){a.run(`fetch=async()=>({ok:true,json:async()=>({v:${JSON.stringify(v)}})})`);await a.run('checkUpdate()');assert.equal(a.el('updateBanner').hidden,true)}
+ a.run("fetch=async()=>({ok:true,json:async()=>({v:'v18'})})");await a.run('checkUpdate()');
+ a.run("fetch=async()=>{throw Error('offline')}");await a.run('checkUpdate()');assert.equal(a.el('updateBanner').hidden,false);assert.equal(a.run('checkingUpdate'),false);
+});
+test('update preserves unsaved draft, waiting visits and connection before a cache-busting navigation',()=>{
+ const a=app({'cam-queue':[{id:'waiting',test:true,st:{test:true}}],'cam-cfg':{url:'https://example.test',key:'test-only'}});
+ a.run("navigator.onLine=true;availableVersion='v18';S.site='Lion Pool';S.obs='Unsaved notes';var navigated='';location.href='https://example.test/cameras/';location.replace=u=>{navigated=u};applyUpdate()");
+ assert.equal(JSON.parse(a.data.get('cam-visit')).obs,'Unsaved notes');assert.equal(JSON.parse(a.data.get('cam-queue'))[0].id,'waiting');assert.equal(JSON.parse(a.data.get('cam-cfg')).key,'test-only');
+ const url=new URL(a.run('navigated'));assert.equal(url.pathname,'/cameras/');assert.match(url.searchParams.get('app-update'),/^v18-/);
+});
+test('offline or failed local saving prevents updating away from the current visit',()=>{
+ const a=app();a.run("availableVersion='v18';var navigated='';location.replace=u=>{navigated=u};applyUpdate()");assert.equal(a.run('navigated'),'');assert.equal(a.el('updateApp').disabled,true);assert.equal(a.el('updateApp').textContent,'Connect to update');
+ a.run("navigator.onLine=true;localStorage.setItem=()=>{throw Error('full')};applyUpdate()");assert.equal(a.run('navigated'),'');assert.match(a.el('updateMessage').textContent,/Update paused/);
+});
+test('updates are checked each visible minute and when connectivity returns',async()=>{
+ const a=app();a.run('navigator.onLine=true;var checks=0;fetch=async()=>{checks++;return{ok:true,json:async()=>({v:"v17"})}}');
+ await a.intervals.find(x=>x.ms===60000).fn();assert.equal(a.run('checks'),1);
+ await a.run('Promise.resolve()');a.run('document.visibilityState="hidden"');await a.intervals.find(x=>x.ms===60000).fn();assert.equal(a.run('checks'),1);
+ await a.run('Promise.resolve()');a.events.online();assert.equal(a.run('checks'),2);
 });
