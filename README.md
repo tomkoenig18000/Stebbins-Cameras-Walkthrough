@@ -25,3 +25,5 @@ Edit `SITES` near the top of the script in `index.html`.
 Bump all three together so installed phones show the update banner: `APP_VERSION` in `index.html`, `version.json`, and `C` in `sw.js`.
 
 The installed version is always visible in the top bar. A persistent blue update banner shows installed and available versions and an Update now button. Checks run when the app opens, returns to the foreground or comes online, and every minute while visible. Updating first saves the current visit, queued uploads and phone settings, then navigates with a cache-busting URL. An offline phone can keep working and update when connected. The first move from older app copies still uses their existing update prompt or a close/reopen.
+
+Phone data is committed as one local snapshot before a visit is shown as saved. Storage failures keep the draft open and show a persistent warning. Legacy phone data migrates automatically; best-effort legacy copies are retained for older cached shells. Concurrent editing in several app tabs is not supported. Upload receipts are saved before a visit leaves the queue, and edits made during an upload are sent after that request finishes.
