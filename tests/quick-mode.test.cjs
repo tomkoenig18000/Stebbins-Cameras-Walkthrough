@@ -66,29 +66,29 @@ test('pre-update detailed drafts keep their measurements and walkthrough',()=>{
 });
 
 test('version is visible and a newer release shows installed and available versions',async()=>{
- const a=app();assert.equal(a.el('appVersion').textContent,'Version v20');assert.equal(a.el('updateBanner').hidden,true);
- a.run("navigator.onLine=true;fetch=async()=>({ok:true,json:async()=>({v:'v21'})})");await a.run('checkUpdate()');
- assert.equal(a.el('updateBanner').hidden,false);assert.equal(a.el('updateVersions').textContent,'This phone: v20 · Available: v21');assert.equal(a.el('updateApp').textContent,'Update now');
- a.run("fetch=async()=>({ok:true,json:async()=>({v:'v20'})})");await a.run('checkUpdate()');assert.equal(a.el('updateBanner').hidden,true);
+ const a=app();assert.equal(a.el('appVersion').textContent,'Version v21');assert.equal(a.el('updateBanner').hidden,true);
+ a.run("navigator.onLine=true;fetch=async()=>({ok:true,json:async()=>({v:'v22'})})");await a.run('checkUpdate()');
+ assert.equal(a.el('updateBanner').hidden,false);assert.equal(a.el('updateVersions').textContent,'This phone: v21 · Available: v22');assert.equal(a.el('updateApp').textContent,'Update now');
+ a.run("fetch=async()=>({ok:true,json:async()=>({v:'v21'})})");await a.run('checkUpdate()');assert.equal(a.el('updateBanner').hidden,true);
 });
 test('cached older or malformed versions do not prompt; a failed check does not erase a known update',async()=>{
  const a=app();a.run('navigator.onLine=true');
- for(const v of ['v16','v20','garbage','v20-beta']){a.run(`fetch=async()=>({ok:true,json:async()=>({v:${JSON.stringify(v)}})})`);await a.run('checkUpdate()');assert.equal(a.el('updateBanner').hidden,true)}
- a.run("fetch=async()=>({ok:true,json:async()=>({v:'v21'})})");await a.run('checkUpdate()');
+ for(const v of ['v16','v21','garbage','v21-beta']){a.run(`fetch=async()=>({ok:true,json:async()=>({v:${JSON.stringify(v)}})})`);await a.run('checkUpdate()');assert.equal(a.el('updateBanner').hidden,true)}
+ a.run("fetch=async()=>({ok:true,json:async()=>({v:'v22'})})");await a.run('checkUpdate()');
  a.run("fetch=async()=>{throw Error('offline')}");await a.run('checkUpdate()');assert.equal(a.el('updateBanner').hidden,false);assert.equal(a.run('checkingUpdate'),false);
 });
 test('update preserves unsaved draft, waiting visits and connection before a cache-busting navigation',()=>{
  const a=app({'cam-queue':[{id:'waiting',test:true,st:{test:true}}],'cam-cfg':{url:'https://example.test',key:'test-only'}});
- a.run("navigator.onLine=true;availableVersion='v21';S.site='Lion Pool';S.obs='Unsaved notes';var navigated='';location.href='https://example.test/cameras/';location.replace=u=>{navigated=u};applyUpdate()");
+ a.run("navigator.onLine=true;availableVersion='v22';S.site='Lion Pool';S.obs='Unsaved notes';var navigated='';location.href='https://example.test/cameras/';location.replace=u=>{navigated=u};applyUpdate()");
  assert.equal(a.saved('cam-visit').obs,'Unsaved notes');assert.equal(a.saved('cam-queue')[0].id,'waiting');assert.equal(a.saved('cam-cfg').key,'test-only');
- const url=new URL(a.run('navigated'));assert.equal(url.pathname,'/cameras/');assert.match(url.searchParams.get('app-update'),/^v21-/);
+ const url=new URL(a.run('navigated'));assert.equal(url.pathname,'/cameras/');assert.match(url.searchParams.get('app-update'),/^v22-/);
 });
 test('offline or failed local saving prevents updating away from the current visit',()=>{
- const a=app();a.run("availableVersion='v21';var navigated='';location.replace=u=>{navigated=u};applyUpdate()");assert.equal(a.run('navigated'),'');assert.equal(a.el('updateApp').disabled,true);assert.equal(a.el('updateApp').textContent,'Connect to update');
+ const a=app();a.run("availableVersion='v22';var navigated='';location.replace=u=>{navigated=u};applyUpdate()");assert.equal(a.run('navigated'),'');assert.equal(a.el('updateApp').disabled,true);assert.equal(a.el('updateApp').textContent,'Connect to update');
  a.run("navigator.onLine=true;localStorage.setItem=()=>{throw Error('full')};applyUpdate()");assert.equal(a.run('navigated'),'');assert.match(a.el('updateMessage').textContent,/Update paused/);
 });
 test('updates are checked each visible minute and when connectivity returns',async()=>{
- const a=app();a.run('navigator.onLine=true;var checks=0;fetch=async()=>{checks++;return{ok:true,json:async()=>({v:"v20"})}}');
+ const a=app();a.run('navigator.onLine=true;var checks=0;fetch=async()=>{checks++;return{ok:true,json:async()=>({v:"v21"})}}');
  await a.intervals.find(x=>x.ms===60000).fn();assert.equal(a.run('checks'),1);
  await a.run('Promise.resolve()');a.run('document.visibilityState="hidden"');await a.intervals.find(x=>x.ms===60000).fn();assert.equal(a.run('checks'),1);
  await a.run('Promise.resolve()');a.events.online();assert.equal(a.run('checks'),2);
