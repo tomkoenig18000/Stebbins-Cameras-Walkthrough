@@ -9,7 +9,7 @@ function app(initial={}) {
  const el=id=>{if(!elements.has(id))elements.set(id,{dataset:{},textContent:'',innerHTML:'',hidden:false});return elements.get(id)};
  const context=vm.createContext({console,Date,Math,JSON,Set,URL,
   localStorage:{getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,v)},
-  document:{getElementById:el,querySelector:()=>null,addEventListener:()=>{}},
+  document:{documentElement:{dataset:{}},getElementById:el,querySelector:()=>null,addEventListener:()=>{}},
   navigator:{onLine:false},location:{hostname:'localhost',protocol:'http:'},
   window:{scrollTo:()=>{}},addEventListener:()=>{},setInterval:()=>{}});
  vm.runInContext(script,context);
@@ -20,6 +20,20 @@ test('new installs use a single-page quick form; explicit detailed preference pe
  assert.equal(a.el('next').textContent,'Save visit');assert.equal(a.el('back').hidden,true);
  assert.match(a.run('quickForm()'),/Batteries changed/);assert.doesNotMatch(a.run('quickForm()'),/Coming out|Pictures|Delay found/);
  assert.equal(app({'cam-streamlined':false}).run('quick()'),false);
+});
+test('testing mode marks records, drafts and summaries and survives editing with the toggle off',()=>{
+ const a=app({'cam-testing':true});a.run("S.site='Lion Pool';S.state='Running'");
+ const r=a.run('row()');assert.equal(r.test,true);assert.equal(r.type,'Test');assert.match(r.notes,/^\[TEST\]/);assert.match(r.line,/^\[TEST\]/);assert.equal(r.st.test,true);
+ const b=app({'cam-testing':false,'cam-visit':{...r.st,editId:r.id}});assert.equal(b.run('row().test'),true);
+ assert.equal(app().run('row().test'),false);
+});
+test('old app queues are classified as tests before any retry',()=>{
+ const a=app({'cam-queue':[{id:'legacy',date:'2026-10-11',site:"Annie's Junction",type:'Service',notes:'',line:'old visit',st:{}}]});
+ const r=JSON.parse(a.data.get('cam-queue'))[0];assert.equal(r.test,true);assert.equal(r.type,'Test');assert.equal(r.st.test,true);
+});
+test('test upload stays queued if the server does not support isolation',async()=>{
+ const a=app({'cam-testing':true});a.run("S.site='Lion Pool';queue=[row()];cfg={url:'https://example.test',key:''};navigator.onLine=true;var requests=[];fetch=async(u,o)=>{requests.push(JSON.parse(o.body));return{text:async()=>JSON.stringify({ok:false})}};");
+ await a.run('push()');assert.equal(a.run('queue.length'),1);assert.equal(a.run('requests.length'),1);assert.equal(a.run('requests[0].action'),'capabilities');
 });
 test('quick service records preserve actions while leaving unmeasured numeric fields blank',()=>{
  const a=app();
