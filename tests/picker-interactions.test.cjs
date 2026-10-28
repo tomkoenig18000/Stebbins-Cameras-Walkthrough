@@ -17,6 +17,7 @@ function app(){
   navigator:{onLine:false},location:{hostname:'localhost',protocol:'http:'},
   window:{scrollTo(){}},addEventListener:(name,fn)=>{windowEvents[name]=fn},setInterval(){}});
  vm.runInContext(script,context);
+ vm.runInContext("document.getElementById('next').onclick()",context);
  const run=s=>vm.runInContext(s,context);
  return {run,el,document,windowEvents,views:()=>viewWrites,
   input:target=>events.input({target}),change:target=>events.change({target}),
