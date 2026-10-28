@@ -18,6 +18,7 @@ function app(initial={}){
   navigator:{onLine:false},location:{hostname:'localhost',protocol:'http:'},
   window:{scrollTo(){}},addEventListener(){},setInterval(){}});
  vm.runInContext(script,context);
+ vm.runInContext("document.getElementById('next').onclick()",context);
  return {run:source=>vm.runInContext(source,context),data,element,
   input:target=>(events.input||[]).forEach(fn=>fn({target})),
   click:button=>(events.click||[]).forEach(fn=>fn({target:{closest:()=>button}})),

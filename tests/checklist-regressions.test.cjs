@@ -20,6 +20,7 @@ function app(initial={}) {
   navigator:{onLine:false},location:{hostname:'localhost',protocol:'http:'},window:{scrollTo(){}},
   addEventListener(){},setInterval(){}});
  vm.runInContext(script,context);
+ vm.runInContext("document.getElementById('next').onclick()",context);
  return {run:source=>vm.runInContext(source,context),el,
   input:target=>(handlers.input||[]).forEach(fn=>fn({target})),
   click:button=>(handlers.click||[]).forEach(fn=>fn({target:{closest:()=>button}})),
